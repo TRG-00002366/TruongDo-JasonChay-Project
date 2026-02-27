@@ -2,16 +2,17 @@
 
 ## Overview
 
-Build an end-to-end data engineering pipeline that ingests real-time e-commerce order events via Kafka, processes them with PySpark, and orchestrates the entire workflow using Apache Airflow. This project ties together all concepts from **Weeks 1–4** of the Data Engineering curriculum.
+Build an end-to-end data engineering pipeline US traffic accidents analytics from 2016-2023. that ingest accident events processes them using PySpark, and orchestrates batch 
+ and streaming workflows using Apache Airflow
 
 ---
 
-## Business Scenario
+## Traffic Scenario
 
-An e-commerce company wants to:
+A safety-aware individual wants to know:
 
-1. **Stream** order events (new orders, cancellations, returns) in real time.
-2. **Process** the raw events to compute hourly sales aggregations, top-selling products, and regional revenue breakdowns.
+1. **Stream** traffic accident events (severity, start time, timezone, weather, temperature, visivility, traffic signal, junction, roundabout, stop, traffic_singal, sunrise, sunset, railway, bump, precipitation) in real time.
+2. **Process** the raw events to compute average temperature,  .
 3. **Persist** both raw and transformed data to storage (local filesystem or S3).
 4. **Orchestrate** the batch and streaming jobs on a daily schedule with retry and alerting.
 
@@ -21,29 +22,29 @@ An e-commerce company wants to:
 
 ```
 ┌──────────────┐       ┌─────────────┐       ┌─────────────────────┐
-│  Order Event │       │             │       │  PySpark Streaming   │
+│  Accident    |       |             |
+│  Event       │       │             |         │  PySpark Streaming   │
 │  Simulator   │──────▶│   Kafka     │──────▶│  Consumer / ETL      │
 │  (Producer)  │       │  (Topic:    │       │  (Spark Structured   │
-│              │       │  orders)    │       │   Streaming)          │
+│              │       │  Accidents) │       │   Streaming)          │
 └──────────────┘       └─────────────┘       └──────────┬────────────┘
                                                         │
                                                         ▼
                                               ┌─────────────────────┐
-                                              │  Raw Data Layer     │
+                                              │ Raw Accident Layer  │
                                               │  (Parquet / JSON)   │
                                               └──────────┬──────────┘
                                                          │
                                                          ▼
                                               ┌─────────────────────┐
-                                              │  PySpark Batch ETL  │
-                                              │  (Aggregations,     │
-                                              │   Joins, Filters)   │
+                                              │PySpark Analytics ETL│
+                                              │  (RDD + SQL         │
                                               └──────────┬──────────┘
                                                          │
                                                          ▼
                                               ┌─────────────────────┐
-                                              │  Transformed Data   │
-                                              │  (Parquet / CSV)    │
+                                              │  Curated Analytics  │
+                                              │  Traffic Insights   │
                                               └──────────┬──────────┘
                                                          │
                                                          ▼
@@ -71,35 +72,37 @@ An e-commerce company wants to:
 
 ### Module 1 — Kafka Producer (Week 3)
 
-**Goal:** Simulate a stream of order events.
+**Goal:** Simulate traffic accident reports.
 
-- Create a Kafka topic named `ecommerce_orders`.
+- Create a Kafka topic named `traffic_accidents`.
 - Write a Python Kafka producer (`producer.py`) that generates JSON order events:
   ```json
   {
-    "order_id": "ORD-10042",
-    "customer_id": "CUST-301",
-    "product_id": "PROD-88",
-    "product_name": "Wireless Mouse",
-    "category": "Electronics",
-    "quantity": 2,
-    "unit_price": 29.99,
-    "order_status": "NEW",
-    "region": "US-East",
-    "timestamp": "2026-02-19T10:32:00Z"
+    "accident_id": "ORD-10042",
+    "severity": "3",
+    "City": "Norfolk",
+    "State": "Va",
+    "start_time": "2026-02-19T10:32:00Z",
+    "temperature": 41.2,
+    "visibility": 2.5,
+    "weather_condition": "fog",
+    "traffic_signal": "true",
+    "junction": "true",
+    "distance_mi": 0.7
   }
   ```
-- Use `order_status` values: `NEW`, `CANCELLED`, `RETURNED`.
-- Produce at least **500 events** with randomized data using the `Faker` library.
+- Generate 500 randomized events
+- use sampled Kaggle data
+- Simulate realistic weather + severity distributions 
 
 ---
 
 ### Module 2 — Spark Streaming Consumer (Week 3)
 
-**Goal:** Consume and persist the raw Kafka stream.
+**Goal:** Consume accident stream and persist raw data.
 
 - Write a PySpark Structured Streaming job (`stream_consumer.py`).
-- Read from the `ecommerce_orders` Kafka topic.
+- Read accident event messages produced by the US accidents dataset  
 - Deserialize JSON messages into a Spark DataFrame.
 - Write the raw data to a **Parquet** sink partitioned by `date` (derived from `timestamp`).
 - Implement a 1-minute micro-batch trigger.
