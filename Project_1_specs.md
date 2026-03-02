@@ -23,9 +23,9 @@ A safety-aware individual wants to know:
 ```
 ┌──────────────┐       ┌─────────────┐       ┌─────────────────────┐
 │  Accident    |       |             |
-│  Event       │       │             |         │  PySpark Streaming   │
+│  Event       │       │             |       │  PySpark Streaming    │
 │  Simulator   │──────▶│   Kafka     │──────▶│  Consumer / ETL      │
-│  (Producer)  │       │  (Topic:    │       │  (Spark Structured   │
+│  (Producer)  │       │  (Topic:    │       │  (Spark Structured    │
 │              │       │  Accidents) │       │   Streaming)          │
 └──────────────┘       └─────────────┘       └──────────┬────────────┘
                                                         │
@@ -38,7 +38,7 @@ A safety-aware individual wants to know:
                                                          ▼
                                               ┌─────────────────────┐
                                               │PySpark Analytics ETL│
-                                              │  (RDD + SQL         │
+                                              │  (RDD + SQL)        │
                                               └──────────┬──────────┘
                                                          │
                                                          ▼
@@ -117,18 +117,23 @@ A safety-aware individual wants to know:
 
 - Load the raw Parquet data as an RDD.
 - Use RDD transformations (`map`, `filter`, `reduceByKey`) to:
-  - Filter out `CANCELLED` orders.
-  - Compute total revenue per `product_id` using key-value pair RDDs.
+  - Filter out null rows `Weather_Condition`.
+  - Fill nulls in `End_Lat`, `End_Lng`, `Weather_Timestamp`, `Temperature`, `Wind_Chill`, `Humidity`, `Pressure`, `Visibility`, `Wind_Direction`, `Wind_Speed`, `Precipitation`
+  - Validate quantitative column values make sense.
+  - Clean:
+    - Trim `ID`
+    - Standardize dates and timestamps
+  - Can create celsius columns if needed
 - Save the result as a text file.
 
 #### 3B — DataFrame / Spark SQL Processing (Week 2)
 
 - Load the raw Parquet data into a Spark DataFrame.
 - Perform the following transformations:
-  1. **Hourly Sales Summary** — Group by hour, compute `total_orders`, `total_revenue`, `avg_order_value`.
-  2. **Top 10 Products** — Rank products by total quantity sold using Spark SQL window functions.
-  3. **Regional Revenue** — Join orders with a static `regions.csv` reference dataset to enrich region names, then aggregate revenue by region.
-  4. **Order Status Breakdown** — Pivot on `order_status` to get counts per category.
+  1. **Hour of days Summary** — Group by hour of day, compute `total_accidents`, `avg_duration_mintues`, `avg_serverity`.
+  2. **Top 10 Weather Conditions** — Identify Weather conditions with the highest accident concentrations using Spark SQL window functions.
+  3. **Weather Severity Impact** — Join orders with a static `weather.csv` reference dataset to enrich weather condition, then aggregate severity statistics per weather conditions.
+  4. **Weather Conditions Breakdown** — Under stand accident distribution across enviromental conditions 
 - Write each output to Parquet, partitioned and bucketed where appropriate.
 - Use **caching** on the base DataFrame to speed up multiple downstream transformations.
 
@@ -138,7 +143,7 @@ A safety-aware individual wants to know:
 
 **Goal:** Schedule and manage the full pipeline.
 
-- Create an Airflow DAG named `ecommerce_pipeline` in a file called `ecommerce_dag.py`.
+- Create an Airflow DAG named `accident_pipeline` in a file called `accident_dag.py`.
 - Define the following tasks with proper dependencies:
 
   ```
@@ -176,7 +181,7 @@ A safety-aware individual wants to know:
 | 2  | `stream_consumer.py`               | PySpark script       |
 | 3  | `batch_rdd_etl.py`                 | PySpark script       |
 | 4  | `batch_df_etl.py`                  | PySpark script       |
-| 5  | `ecommerce_dag.py`                 | Airflow DAG          |
+| 5  | `accidents_dag.py`                 | Airflow DAG          |
 | 6  | `regions.csv`                      | Reference data       |
 | 7  | `README.md`                        | Setup & run guide    |
 | 8  | Sample output screenshots          | PNG / Markdown       |
@@ -200,7 +205,7 @@ project1/
 │   └── batch_df_etl.py
 ├── airflow/
 │   └── dags/
-│       └── ecommerce_dag.py
+│       └── accidents_dag.py
 └── config/
     └── spark-defaults.conf
 ```
