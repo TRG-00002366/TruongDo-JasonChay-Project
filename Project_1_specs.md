@@ -118,12 +118,10 @@ A safety-aware individual wants to know:
 - Load the raw Parquet data as an RDD.
 - Use RDD transformations (`map`, `filter`, `reduceByKey`) to:
   - Filter out null rows `Weather_Condition`.
-  - Fill nulls in `End_Lat`, `End_Lng`, `Weather_Timestamp`, `Temperature`, `Wind_Chill`, `Humidity`, `Pressure`, `Visibility`, `Wind_Direction`, `Wind_Speed`, `Precipitation`
   - Validate quantitative column values make sense.
   - Clean:
     - Trim `ID`
     - Standardize dates and timestamps
-  - Can create celsius columns if needed
 - Save the result as a text file.
 
 #### 3B — DataFrame / Spark SQL Processing (Week 2)
