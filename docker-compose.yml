@@ -83,9 +83,9 @@ services:
   spark-init:
     image: busybox
     container_name: pipeline-spark-init
-    command: [ "sh", "-c", "mkdir -p /opt/spark-data/landing /opt/spark-data/gold && chmod -R 777 /opt/spark-data" ]
+    command: ["sh", "-c", "mkdir -p /opt/spark-data/raw /opt/spark-data/bronze /opt/spark-data/silver /opt/spark-data/gold && chmod -R 777 /opt/spark-data"]
     volumes:
-      - ./spark_data:/opt/spark-data
+      - ./outputs:/opt/spark-data
     networks:
       - pipeline-network
 
@@ -101,8 +101,8 @@ services:
       - SPARK_NO_DAEMONIZE=true
     command: [ "/opt/spark/sbin/start-master.sh" ]
     volumes:
-      - ./jobs:/opt/spark-jobs
-      - ./spark_data:/opt/spark-data
+      - ./spark:/opt/spark-apps
+      - ./outputs:/opt/spark-data
     depends_on:
       spark-init:
         condition: service_completed_successfully
@@ -125,8 +125,8 @@ services:
       - SPARK_NO_DAEMONIZE=true
     command: [ "/opt/spark/sbin/start-worker.sh", "spark://spark-master:7077" ]
     volumes:
-      - ./jobs:/opt/spark-jobs
-      - ./spark_data:/opt/spark-data
+      - ./spark:/opt/spark-apps
+      - ./outputs:/opt/spark-data
     networks:
       - pipeline-network
 
@@ -204,12 +204,13 @@ services:
       # Spark connection details
       SPARK_MASTER_URL: spark://spark-master:7077
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-      - ./scripts:/opt/airflow/scripts
-      - ./jobs:/opt/spark-jobs
-      - ./spark_data:/opt/spark-data
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./kafka:/opt/airflow/kafka
+      - ./spark:/opt/airflow/spark
+      - ./outputs:/opt/airflow/outputs
+      - ./sampled_accidents.csv:/opt/airflow/data/sampled_accidents.csv
     healthcheck:
       test: [ "CMD", "curl", "--fail", "http://localhost:8080/health" ]
       interval: 30s
@@ -244,12 +245,13 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPARK_MASTER_URL: spark://spark-master:7077
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-      - ./scripts:/opt/airflow/scripts
-      - ./jobs:/opt/spark-jobs
-      - ./spark_data:/opt/spark-data
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./kafka:/opt/airflow/kafka
+      - ./spark:/opt/airflow/spark
+      - ./outputs:/opt/airflow/outputs
+      - ./sampled_accidents.csv:/opt/airflow/data/sampled_accidents.csv
       # Docker socket for running docker exec commands (spark-submit)
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
