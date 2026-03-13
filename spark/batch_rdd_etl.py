@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 import shutil
 import os 
+import datetime
 
 spark = (
     SparkSession.builder
@@ -12,7 +13,9 @@ spark = (
 spark.sparkContext.setLogLevel("WARN")
 
 #Load Parquet
-df = spark.read.parquet("/home/truongdo/TruongDo-JuanJose-Project/sampled_accidents")
+df = spark.read.csv("generated_accidents.csv")
+df.write.parquet("generated_accidents")
+df = spark.read.parquet("generated_accidents")
 df.show(5)
 df.printSchema()
 
@@ -122,7 +125,7 @@ weather_counts = (
 weather_counts_sorted = weather_counts.sortBy(lambda kv: kv[1], ascending=False)
 
 # Output path
-output_path = "/home/truongdo/TruongDo-JuanJose-Project/outputs/weather_counts"
+output_path = "outputs/weather_counts"
 
 #Delete output folder if exist
 if os.path.exists(output_path):
