@@ -46,7 +46,7 @@ with DAG(
         bash_command=(
             "spark-submit "
             "--master spark://spark-master:7077 "
-            "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 "
+            "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:4.1.1 "
             "/opt/airflow/spark/stream_consumer.py "
             "--bootstrap-servers kafka:9094 "
             "--duration 120 "
