@@ -28,7 +28,7 @@ print("Topic successfully created.")
 
 ##### FAKER: GENERATING FAKE DATA
 
-df = pd.read_csv("sampled_accidents.csv")
+df = pd.read_csv("data/sampled_accidents.csv")
 fake = Faker()
 
 # Null distributions in raw data
@@ -143,16 +143,21 @@ def generate_weather():
 
     precipitation = 0
 
-    if "Rain" in str(condition):
-        precipitation = round(np.random.uniform(0.01,0.3),2)
+    if str(condition).startswith("Light"):
+        precipitation = round(np.random.uniform(0.0,0.03))
+        visibility -= np.random.uniform(1,5)
+
+    elif "Rain" in str(condition):
+        precipitation = round(np.random.uniform(0.5,5))
         visibility -= np.random.uniform(1,5)
 
     if "Cloud" in str(condition):
         humidity += np.random.uniform(5,10)
+    
+    if "Clear" in str(condition):
+        humidity -= np.random.uniform(20,40)
 
-    wind_chill = 0
-    if temp < 50 and wind_speed > 5:
-        wind_chill = temp - wind_speed*0.7
+    wind_chill = 35.74 + 0.6215*temp - 35.75*wind_speed**0.16 + 0.4275*temp*wind_speed**0.16
 
     return temp, wind_chill, humidity, pressure, visibility, wind_speed, precipitation, condition
 
