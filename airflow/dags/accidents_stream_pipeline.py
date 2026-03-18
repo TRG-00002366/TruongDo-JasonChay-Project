@@ -5,6 +5,7 @@ from airflow.operators.bash import BashOperator
 from airflow.sensors.filesystem import FileSensor
 from datetime import datetime, timedelta
 import os
+from kafka.admin import KafkaAdminClient
 
 default_args = {
     "owner": "accidents",
@@ -17,7 +18,16 @@ default_args = {
 # maybe a KafkaAdminClient()
 def check_kafka_topic():
     topic = "traffic_accidents"
-    if not topic:
+    bootstrap_server = "kafka:9094"
+
+    admin_client = KafkaAdminClient(
+        bootstrap_servers=bootstrap_server,
+        client_id="airflow-topic-check"
+    )
+
+    topics = admin_client.list_topics()
+
+    if topic not in topic:
         raise ValueError("No Kafka Topic")
     print("Kafka topic passed")
 

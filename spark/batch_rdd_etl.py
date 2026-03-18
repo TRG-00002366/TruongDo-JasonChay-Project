@@ -1,7 +1,7 @@
 from pyspark.sql import SparkSession
 import shutil
 import os 
-import datetime
+from datetime import datetime
 
 # Any validation, cleaning, deduplication to be done before we perform DataFrame transformations
 
@@ -60,10 +60,10 @@ def standardize_timestamp(x):
 # Filter out bad rows
 
 filtered_rdd = rdd.filter(lambda row:
-    row["_c0"] != "ID" and                        
-    row["_c28"] is not None and                   
-    str(row["_c28"]).strip() != "" and
-    str(row["_c28"]).strip().upper() != "NULL"
+    row["ID"] is not None and                        
+    row["Weather_Condition"] is not None and                   
+    str(row["Weather_Condition"]).strip() != "" and
+    str(row["Weather_Condition"]).strip().upper() != "NULL"
 )
 
 
@@ -71,21 +71,21 @@ filtered_rdd = rdd.filter(lambda row:
 # Clean + validate rows
 
 def clean_and_validate(row):
-    accident_id = str(row["_c0"]).strip()
+    accident_id = str(row["ID"]).strip()
 
-    start_time = standardize_timestamp(row["_c3"])
-    end_time = standardize_timestamp(row["_c4"])
-    weather_timestamp = standardize_timestamp(row["_c19"])
+    start_time = standardize_timestamp(row["Start_Time"])
+    end_time = standardize_timestamp(row["End_Time"])
+    weather_timestamp = standardize_timestamp(row["Weather_Timestamp"])
 
-    temperature = parse_float(row["_c20"])
-    wind_chill = parse_float(row["_c21"])
-    humidity = parse_float(row["_c22"])
-    pressure = parse_float(row["_c23"])
-    visibility = parse_float(row["_c24"])
-    wind_speed = parse_float(row["_c26"])
-    precipitation = parse_float(row["_c27"])
+    temperature = parse_float(row["Temperature(F)"])
+    wind_chill = parse_float(row["Wind_Chill(F)"])
+    humidity = parse_float(row["Humidity(%)"])
+    pressure = parse_float(row["Pressure(in)"])
+    visibility = parse_float(row["Visibility(mi)"])
+    wind_speed = parse_float(row["Wind_Speed(mph)"])
+    precipitation = parse_float(row["Precipitation(in)"])
 
-    weather_condition = str(row["_c28"]).strip().upper()
+    weather_condition = str(row["Weather_Condition"]).strip().upper()
 
     # Validate quantitative values make sense
     if humidity is not None and not (0 <= humidity <= 100):
