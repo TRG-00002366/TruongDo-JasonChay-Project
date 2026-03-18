@@ -12,12 +12,16 @@ default_args = {
     "retry_delay": timedelta(minutes=5),
     "email_on_failure":True,
 }
+
+# This needs to connect to Kafka broker to see if our topic is created
+# maybe a KafkaAdminClient()
 def check_kafka_topic():
-    topic = "us_accidents"
+    topic = "traffic_accidents"
     if not topic:
         raise ValueError("No Kafka Topic")
     print("Kafka topic passed")
 
+# Needs to validate the columns in each row with some logic, maybe in an external file if the logic becomes long
 def validate_output():
     if not os.path.exists("/opt/airflow/outputs"):
         raise ValueError("Output Folder missing")

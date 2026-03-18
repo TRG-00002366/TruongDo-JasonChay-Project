@@ -3,6 +3,20 @@ import shutil
 import os 
 import datetime
 
+# Any validation, cleaning, deduplication to be done before we perform DataFrame transformations
+
+# What should we do with Nulls? Probably fill with mean, or with 0
+
+# Validate bad rows 
+#   is a negative value allowed?
+#   cant have string in a numerical col like temperature
+# Cleaning
+#   maybe convert dates if anything
+#   not sure might have to come back after we know what analysis we are doing
+# Deduplication
+#   might not have to do this
+#   if there are no duplicate primary keys first column
+
 spark = (
     SparkSession.builder
     .appName("RDD_US_Accidents_Weather")
