@@ -3,6 +3,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, trim, to_timestamp, row_number, hour, count, avg, desc
 from pyspark.sql.types import StringType, IntegerType, DoubleType, BooleanType, TimestampType, StructType, StructField
 from pyspark.sql.window import Window
+from pathlib import Path
 
 
 # ----------------------------
@@ -11,12 +12,18 @@ from pyspark.sql.window import Window
 spark = SparkSession.builder \
     .appName("Batch JSON Processor") \
     .getOrCreate()
+spark.sparkContext.setLogLevel("WARN")
 
 # ----------------------------
 # Load YAML schema
 # ----------------------------
-with open("config/schema2.yaml", "r") as f:
+schema_path = Path("/opt/spark-config/schema.yaml")
+print("Schema exists:", schema_path.exists())
+
+with open(schema_path, "r") as f:
     schema_yaml = yaml.safe_load(f)
+# with open("/opt/spark-config/schema.yaml", "r") as f:
+#     schema_yaml = yaml.safe_load(f)
 
 # ----------------------------
 # Map YAML types → Spark types
@@ -47,9 +54,11 @@ spark_schema = StructType(fields)
 # ----------------------------
 # Read multiple JSON files
 # ----------------------------
+# input_path = "data/raw/*.json"
+input_path = "/opt/spark-data/raw/*.json"
 df = spark.read \
     .schema(spark_schema) \
-    .json("data/raw")
+    .json(input_path)
 
 # ----------------------------
 # Cleaning transformations
@@ -101,29 +110,57 @@ if dedup_conf:
 # ----------------------------
 # Write output
 # ----------------------------
+
+df.show()
 df.write \
     .mode("overwrite") \
     .json("data/silver/")
 
+# output_path = "data"
+output_path = "/opt/spark-data"
 
-# 1. Accident Information by Hour of Day: Group by hour, calculate cols: 'total_accidents', 'avg_duration_mintues', 'avg_serverity'
-# hour_of_day_summary = (
-#     df.withColumn("hour_of_day", hour(col("Start_Time"))).groupBy("hour_of_day").agg(
-#         count("*").alias("total_accidents"),
-#         avg("duration_minutes").alias("avg_duration_minutes"),
-#         avg("Severity").alias("avg_severity"))
-#     .orderBy("hour_of_day"))
-# hour_of_day_summary.write \
-#     .mode("overwrite") \
-#     .partitionBy("hour_of_day") \
-#     .json("data/analysis1") 
+# 1. Accident Information by Hour of Day: Group by hour, calculate cols: 'total_accidents', 'avg_serverity'
+hour_of_day_summary = df.withColumn("hour_of_day", hour(col("Start_Time"))).groupBy("hour_of_day").agg(
+    count("*").alias("total_accidents"),
+    avg("Severity").alias("avg_severity")
+).orderBy("hour_of_day")
+
+hour_of_day_summary.write\
+    .mode("overwrite")\
+    .partitionBy("hour_of_day") \
+    .parquet(f"{output_path}/analysis1")
+
 
 # 2. Top 10 Weather Conditions: Identify Weather conditions with the highest accident concentrations using Spark SQL window functions
-weather_counts = (df.filter(col("Weather_Condition").isNotNull()).groupBy("Weather_Condition").agg(count("*").alias("accident_count")))
+weather_counts = df.filter(col("Weather_Condition").isNotNull()).groupBy("Weather_Condition").agg(count("*").alias("accident_count"))
 weather_window = Window.orderBy(desc("accident_count"))
-top_10_weather = (weather_counts.withColumn("rank", row_number().over(weather_window)).filter(col("rank") <= 10))
-(top_10_weather.write 
-    .mode("overwrite") 
-    .json("data/analysis2"))
+top_10_weather = weather_counts.withColumn("rank", row_number().over(weather_window)).filter(col("rank") <= 10)
+
+top_10_weather.write \
+    .mode("overwrite") \
+    .partitionBy("Weather_Condition") \
+    .parquet(f"{output_path}/analysis2")
+
+# 3. Average Weather Condition Statistics Per Severity of Accident
+weather_conditions = df.filter(col("Severity").isNotNull()).groupBy("Severity").agg(
+    avg("Precipitation(in)").alias("avg_precipitation(in)"),
+    avg("Temperature(F)").alias("avg_temperature(F)"),
+    avg("Visibility(mi)").alias("avg_visibility(mi)"),
+)
+
+weather_conditions.write \
+    .mode("overwrite") \
+    .partitionBy("Severity") \
+    .parquet(f"{output_path}/analysis3")
+
+# 4. Accident Count by State
+state_accidents = df.filter(col("State").isNotNull()).groupBy("State").agg(count("*").alias("accident_count"))
+state_window = Window.orderBy(desc("accident_count"))
+top_10_states = state_accidents.withColumn("rank", row_number().over(state_window))
+
+top_10_states.write \
+    .mode("overwrite") \
+    .partitionBy("State") \
+    .parquet(f"{output_path}/analysis4")
 
 spark.stop()

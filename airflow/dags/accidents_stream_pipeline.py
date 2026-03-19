@@ -40,8 +40,6 @@ def raw_files_ready():
     print(f"Found JSON files: {files}")
     return len(files) > 0
 
-    print(f"Found files: {files}")
-    return len(files) > 0
 # Needs to validate the columns in each row with some logic, maybe in an external file if the logic becomes long
 def validate_output():
     # if not os.path.exists("/opt/airflow/outputs"):
@@ -89,25 +87,13 @@ with DAG(
     task_id="wait_for_files_to_settle",
     bash_command="sleep 10",
 )
-    run_rdd_etl = BashOperator(
-        task_id="run_rdd_etl",
-        bash_command=(
-            #"export PYSPARK_PYTHON=python3 && "
-            #"export PYSPARK_DRIVER_PYTHON=python3 && "
-            "spark-submit "
-            "--master spark://spark-master:7077 "
-            "/opt/spark-jobs/batch_rdd_etl.py {{ ds }}"
-        )
-    )
 
     run_df_etl = BashOperator(
         task_id="run_df_etl",
         bash_command=(
-            "export PYSPARK_PYTHON=python3 && "
-            "export PYSPARK_DRIVER_PYTHON=python3 && "
             "spark-submit "
             "--master spark://spark-master:7077 "
-            "/opt/airflow/spark/batch_df_etl.py"
+            "/opt/spark-jobs/batch_df_etl.py {{ ds }}"
         )
     )
 
@@ -118,4 +104,4 @@ with DAG(
     end = EmptyOperator(task_id="end")
 
     start >> check_kafka_topic_task >> run_streaming_job >> wait_for_raw_data \
-        >> wait_for_files_to_settle >> run_rdd_etl >> run_df_etl >> validate_output_task >> end
+        >> wait_for_files_to_settle >> run_df_etl >> validate_output_task >> end

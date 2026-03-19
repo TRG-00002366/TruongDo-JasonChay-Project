@@ -103,6 +103,7 @@ services:
     volumes:
       - ./spark:/opt/spark-jobs
       - ./data:/opt/spark-data
+      - ./config:/opt/spark-config
     depends_on:
       spark-init:
         condition: service_completed_successfully
@@ -127,6 +128,7 @@ services:
     volumes:
       - ./spark:/opt/spark-jobs
       - ./data:/opt/spark-data
+      - ./config:/opt/spark-config
     networks:
       - pipeline-network
 
@@ -210,6 +212,7 @@ services:
       - ./airflow/scripts:/opt/airflow/scripts
       - ./spark:/opt/spark-jobs
       - ./data:/opt/spark-data
+      - ./config:/opt/spark-config
     healthcheck:
       test: [ "CMD", "curl", "--fail", "http://localhost:8080/health" ]
       interval: 30s
@@ -252,6 +255,7 @@ services:
       - ./data:/opt/spark-data
       # Docker socket for running docker exec commands (spark-submit)
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./config:/opt/spark-config
     depends_on:
       postgres:
         condition: service_healthy

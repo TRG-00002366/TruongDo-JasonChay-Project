@@ -1,64 +1,102 @@
 columns:
-  ID:
+  - name: ID
     type: string
-    required: true
-    strip: true
+    nullable: false
+    unique: true
 
-  Start_Time:
-    type: timestamp
-    required: true
-    formats:
-      - "yyyy-MM-dd HH:mm:ss"
-
-  End_Time:
-    type: timestamp
-    required: false
-    formats:
-      - "yyyy-MM-dd HH:mm:ss"
-
-  Weather_Timestamp:
-    type: timestamp
-    required: false
-    formats:
-      - "yyyy-MM-dd HH:mm:ss"
-
-  Weather_Condition:
+  - name: Source
     type: string
-    required: true
-    strip: true
-    uppercase: true
+    nullable: true
 
-  Temperature(F):
-    type: float
-    min: -80
-    max: 140
-    fillna: avg
+  - name: Severity
+    type: integer
+    nullable: true
+    min: 1
+    max: 4
 
-  Wind_Chill(F):
-    type: float
-    min: -120
-    max: 140
-    fillna: avg
+  - name: Start_Time
+    type: timestamp
+    nullable: false
 
-  Humidity(%):
-    type: float
+  - name: End_Time
+    type: timestamp
+    nullable: true
+
+  - name: Start_Lat
+    type: double
+    nullable: true
+
+  - name: Start_Lng
+    type: double
+    nullable: true
+
+  - name: End_Lat
+    type: double
+    nullable: true
+
+  - name: End_Lng
+    type: double
+    nullable: true
+
+  - name: Distance(mi)
+    type: double
+    nullable: true
+    min: 0
+
+  - name: Description
+    type: string
+    nullable: true
+    trim: true
+
+  - name: City
+    type: string
+    nullable: true
+    trim: true
+
+  - name: State
+    type: string
+    nullable: true
+
+  - name: Zipcode
+    type: integer
+    nullable: true
+
+  - name: Country
+    type: string
+    nullable: true
+
+  - name: Temperature(F)
+    type: double
+    nullable: true
+
+  - name: Precipitation(in)
+    type: double
+    nullable: true
+
+  - name: Humidity(%)
+    type: double
+    nullable: true
     min: 0
     max: 100
-    fillna: avg
 
-  Pressure(in):
-    type: float
-    min: 20
-    max: 35
-    fillna: avg
-
-  Visibility(mi):
-    type: float
+  - name: Visibility(mi)
+    type: double
+    nullable: true
     min: 0
-    fillna: avg
 
-  
-  Precipitation(in):
-    type: float
-    min: 0
-    fillna: avg
+  - name: Weather_Condition
+    type: string
+    nullable: true
+
+  - name: Amenity
+    type: boolean
+    nullable: true
+
+  - name: Traffic_Signal
+    type: boolean
+    nullable: true
+
+deduplication:
+  keys:
+    - ID
+  order_by: Start_Time
