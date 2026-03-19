@@ -14,20 +14,23 @@ import glob
 
 default_args = {
     "owner": "accidents",
-    "retries": 0,
+    "retries": 1,
     "retry_delay": timedelta(minutes=5),
     "email_on_failure":True,
 }
 
-# This needs to connect to Kafka broker to see if our topic is created
-# maybe a KafkaAdminClient()
+
 def check_kafka_topic():
+    """Uses a Kafka consumer to make sure the Kafka topic exists"""
+
     consumer = KafkaConsumer(bootstrap_servers="kafka:9092")
     if "traffic_accidents" not in consumer.topics():
         raise Exception("Topic does not exist")
 
 
 def raw_files_ready():
+    """Checks the output directory for raw data posted by the consumer and continues when it sees data"""
+
     raw_dir = "/opt/spark-data/raw/"
 
     if not os.path.exists(raw_dir):
@@ -40,12 +43,14 @@ def raw_files_ready():
     print(f"Found JSON files: {files}")
     return len(files) > 0
 
-# Needs to validate the columns in each row with some logic, maybe in an external file if the logic becomes long
 def validate_output():
-    # if not os.path.exists("/opt/airflow/outputs"):
-    #     raise ValueError("Output Folder missing")
+    """Validate that the columns are processed correctly"""
+    # TODO:
     print("Output validation passed")
 
+
+# Creating DAG
+# Spark jobs will be run with BashOperators that spark-submit our 
 with DAG(
     dag_id="accidents_stream_pipeline",
     start_date=datetime(2026, 3, 1),
@@ -54,6 +59,7 @@ with DAG(
     default_args=default_args,
     tags=["airflow", "kafka", "spark", "accidents"],
 ) as dag:
+    # Create tasks
 
     start = EmptyOperator(
         task_id="start"
@@ -71,8 +77,6 @@ with DAG(
             "--master spark://spark-master:7077 "
             "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 "
             "/opt/spark-jobs/stream_consumer.py {{ ds }}"
-            #"--duration 120 "
-            #"--output-path /opt/airflow/outputs/raw/{{ ds }}"
         )
     )
 
@@ -82,10 +86,6 @@ with DAG(
     poke_interval=15,
     timeout=300,
     mode="poke",
-)
-    wait_for_files_to_settle = BashOperator(
-    task_id="wait_for_files_to_settle",
-    bash_command="sleep 10",
 )
 
     run_df_etl = BashOperator(
@@ -103,5 +103,5 @@ with DAG(
 
     end = EmptyOperator(task_id="end")
 
-    start >> check_kafka_topic_task >> run_streaming_job >> wait_for_raw_data \
-        >> wait_for_files_to_settle >> run_df_etl >> validate_output_task >> end
+    # Define dependencies
+    start >> check_kafka_topic_task >> run_streaming_job >> wait_for_raw_data >> run_df_etl >> validate_output_task >> end

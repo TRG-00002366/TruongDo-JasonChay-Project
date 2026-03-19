@@ -9,7 +9,7 @@ spark = SparkSession.builder\
 spark.sparkContext.setLogLevel("WARN")
 print("================================ PROGRAM STARTING ================================")
 
-# Unbounded DataFrame reading from the traffic-accidents topic
+# Unbounded streaming DataFrame reading from Kafka topic
 kafka_df = spark.readStream\
     .format("kafka")\
     .option("kafka.bootstrap.servers", "kafka:9092")\
@@ -18,7 +18,7 @@ kafka_df = spark.readStream\
     .option("kafka.group.id", "airflow_consumer_group")\
     .load()
 
-# Grab just the JSON row data 
+# Grab just the JSON row data (from value since this is where Kafka stores the message information)
 rows = kafka_df.selectExpr("CAST(value AS STRING) as value")
 
 # Create schema
@@ -71,7 +71,8 @@ schema = StructType([
     StructField("Astronomical_Twilight", StringType(), True),
 ])
 
-# Parse to get a JSON ready format
+# We get the values as {value: {...}}
+# Parse to get a JSON ready format for the ETL processes to use
 parsed_rows = rows.select(from_json(col("value"), schema).alias("data")).select("data.*")
 
 # Write parsed rows to JSON files with a write stream

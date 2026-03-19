@@ -114,7 +114,7 @@ if dedup_conf:
 df.show()
 df.write \
     .mode("overwrite") \
-    .json("data/silver/")
+    .json("/opt/spark-data/silver")
 
 # output_path = "data"
 output_path = "/opt/spark-data"
