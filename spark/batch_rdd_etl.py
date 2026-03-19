@@ -1,4 +1,5 @@
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import avg
 import shutil
 import os 
 from datetime import datetime
@@ -27,7 +28,7 @@ spark = (
 spark.sparkContext.setLogLevel("WARN")
 
 #Load Parquet
-df = spark.read.csv("generated_accidents.csv")
+df = spark.read.csv("generated_accidents.csv", header=True, inferSchema=True)
 df.write.parquet("generated_accidents")
 df = spark.read.parquet("generated_accidents")
 df.show(5)
@@ -35,6 +36,24 @@ df.printSchema()
 
 #Convert to RDD
 rdd = df.rdd
+
+numeric_cols = [
+    "Temperature(F)",
+    "Wind_Chill(F)",
+    "Humidity(%)",
+    "Pressure(in)",
+    "Visibility(mi)",
+    "Wind_Speed(mph)",
+    "Precipitation(in)"
+]
+
+avg_values = (
+    df.select([avg(col).alias(col) for col in numeric_cols])
+      .first()
+      .asDict()
+)
+
+df = df.fillna(avg_values)
 
 # Helper functions
 def parse_float(x):
@@ -112,7 +131,14 @@ def clean_and_validate(row):
         "Start_Time": start_time,
         "End_Time": end_time,
         "Weather_Timestamp": weather_timestamp,
-        "Weather_Condition": weather_condition
+        "Weather_Condition": weather_condition,
+        "Temperature(F)": temperature,
+        "Wind_Chill(F)": wind_chill,
+        "Humidity(%)": humidity,
+        "Pressure(in)": pressure,
+        "Visibility(mi)": visibility,
+        "Wind_Speed(mph)": wind_speed,
+        "Precipitation(in)": precipitation
     }
 
 cleaned_rdd = filtered_rdd.map(clean_and_validate).filter(lambda x: x is not None)
