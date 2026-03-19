@@ -2,6 +2,8 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import avg
 import shutil
 import os 
+import glob
+import sys
 from datetime import datetime
 
 # Any validation, cleaning, deduplication to be done before we perform DataFrame transformations
@@ -21,16 +23,28 @@ from datetime import datetime
 spark = (
     SparkSession.builder
     .appName("RDD_US_Accidents_Weather")
-    .master("local[*]")
     .getOrCreate()
 )
 
 spark.sparkContext.setLogLevel("WARN")
+json_files = glob.glob("/opt/spark-data/raw/*.json")
 
-#Load Parquet
-df = spark.read.csv("generated_accidents.csv", header=True, inferSchema=True)
-df.write.parquet("generated_accidents")
-df = spark.read.parquet("generated_accidents")
+if not json_files:
+    print("No JSON files found in /opt/spark-data/raw")
+    spark.stop()
+    sys.exit(0)
+
+# Read from RAW (stream output)
+df = spark.read.json(json_files)
+
+if len(df.columns) == 0:
+    print("JSON files found, but schema is empty")
+    spark.stop()
+    sys.exit(0)
+
+df.write.mode("overwrite").parquet("/opt/spark-data/silver")
+
+df = spark.read.parquet("/opt/spark-data/silver")
 df.show(5)
 df.printSchema()
 

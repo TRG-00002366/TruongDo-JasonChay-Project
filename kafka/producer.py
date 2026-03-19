@@ -22,9 +22,13 @@ topic = NewTopic(
     replication_factor = 1
 )
 
-admin.create_topics([topic])
-admin.close()
-print("Topic successfully created.")
+try:
+    admin.create_topics([topic])
+    print("Topic successfully created.")
+except TopicAlreadyExistsError:
+    print("Topic already exists. Continuing...")
+finally:
+    admin.close()
 
 ##### FAKER: GENERATING FAKE DATA
 

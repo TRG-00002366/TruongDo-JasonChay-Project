@@ -5,7 +5,6 @@ import time
 
 spark = SparkSession.builder\
     .appName("SparkStreamingConsumer")\
-    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.1")\
     .getOrCreate()
 spark.sparkContext.setLogLevel("WARN")
 print("================================ PROGRAM STARTING ================================")
@@ -79,7 +78,7 @@ parsed_rows = rows.select(from_json(col("value"), schema).alias("data")).select(
 query = parsed_rows.writeStream \
     .format("json") \
     .option("path", "/opt/spark-data/raw") \
-    .option("checkpointLocation", "/opt/spark-datacheckpoints") \
+    .option("checkpointLocation", "/opt/spark-data/checkpoints") \
     .outputMode("append") \
     .start()
 

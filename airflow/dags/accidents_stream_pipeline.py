@@ -7,7 +7,9 @@ from airflow.hooks.base import BaseHook
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from datetime import datetime, timedelta
+from airflow.sensors.python import PythonSensor
 import os
+import glob
 
 default_args = {
     "owner": "accidents",
@@ -45,6 +47,21 @@ def check_kafka_topic():
 
     admin_client.close()
 
+def raw_files_ready():
+    raw_dir = "/opt/airflow/outputs/raw"
+
+    if not os.path.exists(raw_dir):
+        print(f"{raw_dir} does not exist yet")
+        return False
+
+    files = glob.glob(os.path.join(raw_dir, "*.json"))
+    files = [f for f in files if os.path.isfile(f)]
+
+    print(f"Found JSON files: {files}")
+    return len(files) > 0
+
+    print(f"Found files: {files}")
+    return len(files) > 0
 # Needs to validate the columns in each row with some logic, maybe in an external file if the logic becomes long
 def validate_output():
     # if not os.path.exists("/opt/airflow/outputs"):
@@ -74,24 +91,29 @@ with DAG(
         bash_command=(
             "spark-submit "
             "--master spark://spark-master:7077 "
-            "--packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.1 "
+            "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 "
             "/opt/airflow/spark/stream_consumer.py "
             #"--duration 120 "
             #"--output-path /opt/airflow/outputs/raw/{{ ds }}"
         )
     )
 
-    wait_for_raw_data = FileSensor(
-        task_id="wait_for_raw_data",
-        filepath="/opt/airflow/outputs/raw",
-        fs_conn_id="fs_default",
-        poke_interval=15,
-    timeout=300
+    wait_for_raw_data = PythonSensor(
+    task_id="wait_for_raw_data",
+    python_callable=raw_files_ready,
+    poke_interval=15,
+    timeout=300,
+    mode="poke",
 )
-
+    wait_for_files_to_settle = BashOperator(
+    task_id="wait_for_files_to_settle",
+    bash_command="sleep 10",
+)
     run_rdd_etl = BashOperator(
         task_id="run_rdd_etl",
         bash_command=(
+            "export PYSPARK_PYTHON=python3 && "
+            "export PYSPARK_DRIVER_PYTHON=python3 && "
             "spark-submit "
             "--master spark://spark-master:7077 "
             "/opt/airflow/spark/batch_rdd_etl.py"
@@ -101,6 +123,8 @@ with DAG(
     run_df_etl = BashOperator(
         task_id="run_df_etl",
         bash_command=(
+            "export PYSPARK_PYTHON=python3 && "
+            "export PYSPARK_DRIVER_PYTHON=python3 && "
             "spark-submit "
             "--master spark://spark-master:7077 "
             "/opt/airflow/spark/batch_df_etl.py"
@@ -125,4 +149,4 @@ with DAG(
     )
 
     start >> check_kafka_topic_task >> run_streaming_job >> wait_for_raw_data \
-        >> run_rdd_etl >> run_df_etl >> validate_output_task >> end
+        >> wait_for_files_to_settle >> run_rdd_etl >> run_df_etl >> validate_output_task >> end
