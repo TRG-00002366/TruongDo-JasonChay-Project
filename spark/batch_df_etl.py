@@ -6,17 +6,15 @@ from pyspark.sql.window import Window
 from pathlib import Path
 
 
-# ----------------------------
+
 # Initialize Spark
-# ----------------------------
 spark = SparkSession.builder \
     .appName("Batch JSON Processor") \
     .getOrCreate()
 spark.sparkContext.setLogLevel("WARN")
 
-# ----------------------------
+
 # Load YAML schema
-# ----------------------------
 schema_path = Path("/opt/spark-config/schema.yaml")
 print("Schema exists:", schema_path.exists())
 
@@ -25,9 +23,8 @@ with open(schema_path, "r") as f:
 # with open("/opt/spark-config/schema.yaml", "r") as f:
 #     schema_yaml = yaml.safe_load(f)
 
-# ----------------------------
+
 # Map YAML types → Spark types
-# ----------------------------
 type_mapping = {
     "string": StringType(),
     "integer": IntegerType(),
@@ -36,9 +33,7 @@ type_mapping = {
     "timestamp": TimestampType()
 }
 
-# ----------------------------
 # Build Spark StructType
-# ----------------------------
 fields = []
 for col_def in schema_yaml["columns"]:
     fields.append(
@@ -51,18 +46,15 @@ for col_def in schema_yaml["columns"]:
 
 spark_schema = StructType(fields)
 
-# ----------------------------
 # Read multiple JSON files
-# ----------------------------
 # input_path = "data/raw/*.json"
 input_path = "/opt/spark-data/raw/*.json"
 df = spark.read \
     .schema(spark_schema) \
     .json(input_path)
 
-# ----------------------------
+
 # Cleaning transformations
-# ----------------------------
 for col_def in schema_yaml["columns"]:
     col_name = col_def["name"]
 
@@ -74,9 +66,8 @@ for col_def in schema_yaml["columns"]:
     if col_def["type"] == "timestamp":
         df = df.withColumn(col_name, to_timestamp(col(col_name)))
 
-# ----------------------------
+
 # Validation rules
-# ----------------------------
 for col_def in schema_yaml["columns"]:
     col_name = col_def["name"]
 
@@ -92,9 +83,8 @@ for col_def in schema_yaml["columns"]:
     if "max" in col_def:
         df = df.filter(col(col_name) <= col_def["max"])
 
-# ----------------------------
+
 # Deduplication
-# ----------------------------
 dedup_conf = schema_yaml.get("deduplication")
 
 if dedup_conf:
@@ -107,9 +97,8 @@ if dedup_conf:
            .filter(col("row_num") == 1) \
            .drop("row_num")
 
-# ----------------------------
+
 # Write output
-# ----------------------------
 
 df.show()
 df.write \
