@@ -6,7 +6,6 @@ from pyspark.sql.window import Window
 from pathlib import Path
 
 
-
 # Initialize Spark
 spark = SparkSession.builder \
     .appName("Batch JSON Processor") \
@@ -24,7 +23,7 @@ with open(schema_path, "r") as f:
 #     schema_yaml = yaml.safe_load(f)
 
 
-# Map YAML types → Spark types
+# Map YAML types to Spark types
 type_mapping = {
     "string": StringType(),
     "integer": IntegerType(),
@@ -53,7 +52,6 @@ df = spark.read \
     .schema(spark_schema) \
     .json(input_path)
 
-
 # Cleaning transformations
 for col_def in schema_yaml["columns"]:
     col_name = col_def["name"]
@@ -65,7 +63,6 @@ for col_def in schema_yaml["columns"]:
     # Convert timestamps
     if col_def["type"] == "timestamp":
         df = df.withColumn(col_name, to_timestamp(col(col_name)))
-
 
 # Validation rules
 for col_def in schema_yaml["columns"]:
@@ -83,7 +80,6 @@ for col_def in schema_yaml["columns"]:
     if "max" in col_def:
         df = df.filter(col(col_name) <= col_def["max"])
 
-
 # Deduplication
 dedup_conf = schema_yaml.get("deduplication")
 
@@ -97,13 +93,14 @@ if dedup_conf:
            .filter(col("row_num") == 1) \
            .drop("row_num")
 
-
-# Write output
-
+# Writing processed columns to silver
 df.show()
 df.write \
     .mode("overwrite") \
     .json("/opt/spark-data/silver")
+
+
+##### DataFrame Transformations #####
 
 # output_path = "data"
 output_path = "/opt/spark-data"
