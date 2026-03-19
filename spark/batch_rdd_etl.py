@@ -37,6 +37,10 @@ if not json_files:
 # Read from RAW (stream output)
 df = spark.read.json(json_files)
 
+
+df.write.json("opt/spark-data/clean")
+sys.exit(0)
+
 if len(df.columns) == 0:
     print("JSON files found, but schema is empty")
     spark.stop()
@@ -180,7 +184,7 @@ weather_counts = (
 weather_counts_sorted = weather_counts.sortBy(lambda kv: kv[1], ascending=False)
 
 # Output path
-output_path = "outputs/weather_counts"
+output_path = "/opt/spark-data/clean"
 
 #Delete output folder if exist
 if os.path.exists(output_path):

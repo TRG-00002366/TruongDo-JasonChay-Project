@@ -4,6 +4,7 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.sensors.filesystem import FileSensor
 from airflow.hooks.base import BaseHook
+from kafka import KafkaConsumer
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from datetime import datetime, timedelta
@@ -21,34 +22,13 @@ default_args = {
 # This needs to connect to Kafka broker to see if our topic is created
 # maybe a KafkaAdminClient()
 def check_kafka_topic():
-    # Getting Kafka connection details using hook
-    conn = BaseHook.get_connection("kafka_traffic_accident_events")
-    extras = conn.extra_dejson
+    consumer = KafkaConsumer(bootstrap_servers="kafka:9092")
+    if "traffic_accidents" not in consumer.topics():
+        raise Exception("Topic does not exist")
 
-    admin_client = KafkaAdminClient(
-        bootstrap_servers=extras.get("bootstrap.servers"),
-        client_id="airflow-topic-check"
-    )
-
-    # Topic to check for is traffic_accidents
-    topic = "traffic_accidents"
-    topics = admin_client.list_topics()
-
-    if topic not in topics:
-        topic = NewTopic(
-            name = 'traffic_accidents',
-            num_partitions = 4,
-            replication_factor = 1
-        )
-        admin_client.create_topics([topic])
-        print("Created topic: traffic_accidents")
-    else:
-        print("Confirmed that topic exists")
-
-    admin_client.close()
 
 def raw_files_ready():
-    raw_dir = "/opt/airflow/outputs/raw"
+    raw_dir = "/opt/spark-data/raw/"
 
     if not os.path.exists(raw_dir):
         print(f"{raw_dir} does not exist yet")
@@ -92,7 +72,7 @@ with DAG(
             "spark-submit "
             "--master spark://spark-master:7077 "
             "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 "
-            "/opt/airflow/spark/stream_consumer.py "
+            "/opt/spark-jobs/stream_consumer.py {{ ds }}"
             #"--duration 120 "
             #"--output-path /opt/airflow/outputs/raw/{{ ds }}"
         )
@@ -112,11 +92,11 @@ with DAG(
     run_rdd_etl = BashOperator(
         task_id="run_rdd_etl",
         bash_command=(
-            "export PYSPARK_PYTHON=python3 && "
-            "export PYSPARK_DRIVER_PYTHON=python3 && "
+            #"export PYSPARK_PYTHON=python3 && "
+            #"export PYSPARK_DRIVER_PYTHON=python3 && "
             "spark-submit "
             "--master spark://spark-master:7077 "
-            "/opt/airflow/spark/batch_rdd_etl.py"
+            "/opt/spark-jobs/batch_rdd_etl.py {{ ds }}"
         )
     )
 
@@ -136,17 +116,6 @@ with DAG(
         python_callable=validate_output)
 
     end = EmptyOperator(task_id="end")
-
-    pwd_task = BashOperator(
-        task_id="pwd",
-        bash_command="pwd"
-    )
-
-    pwd_task2 = BashOperator(
-        task_id="pwd2",
-        bash_command="pwd",
-        cwd=os.path.join(os.environ['AIRFLOW_HOME'], 'outputs', 'raw')#os.path.join(os.environ['SPARK_HOME'])
-    )
 
     start >> check_kafka_topic_task >> run_streaming_job >> wait_for_raw_data \
         >> wait_for_files_to_settle >> run_rdd_etl >> run_df_etl >> validate_output_task >> end

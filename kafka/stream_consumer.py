@@ -47,9 +47,9 @@ schema = StructType([
     StructField("Wind_Chill(F)", DoubleType(), True),
     StructField("Humidity(%)", DoubleType(), True),
     StructField("Pressure(in)", DoubleType(), True),
-    StructField("Temperature(F)", DoubleType(), True),
     StructField("Visibility(mi)", DoubleType(), True),
     StructField("Wind_Direction", StringType(), True),
+    StructField("Wind_Speed(mph)", DoubleType(), True),
     StructField("Precipitation(in)", DoubleType(), True),
     StructField("Weather_Condition", StringType(), True),
     StructField("Amenity", BooleanType(), True),
@@ -78,7 +78,7 @@ parsed_rows = rows.select(from_json(col("value"), schema).alias("data")).select(
 query = parsed_rows.writeStream \
     .format("json") \
     .option("path", "/opt/spark-data/raw") \
-    .option("checkpointLocation", "/opt/spark-data/checkpoints") \
+    .option("checkpointLocation", "/opt/spark-data/raw/checkpoints") \
     .outputMode("append") \
     .start()
 

@@ -5,7 +5,7 @@ from pyspark.sql.window import Window
 spark = SparkSession.builder.appName("Batch DF ETL Process").master("local[*]").getOrCreate()
 
 # TODO
-filepath = ""
+filepath = "opt/spark-data/bronze"
 hourly_output_path = "/home/truongdo/TruongDo-JasonChay-Project/outputs/hour_of_day_summary"
 top_weather_output_path = "/home/truongdo/TruongDo-JasonChay-Project/outputs/top_weather_conditions"
 
