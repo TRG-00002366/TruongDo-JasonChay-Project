@@ -8,13 +8,15 @@ spark = SparkSession.builder\
     .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.1")\
     .getOrCreate()
 spark.sparkContext.setLogLevel("WARN")
+print("================================ PROGRAM STARTING ================================")
 
 # Unbounded DataFrame reading from the traffic-accidents topic
 kafka_df = spark.readStream\
     .format("kafka")\
-    .option("kafka.bootstrap.servers", "localhost:9094")\
+    .option("kafka.bootstrap.servers", "kafka:9092")\
     .option("subscribe", "traffic_accidents")\
     .option("startingOffsets", "earliest")\
+    .option("kafka.group.id", "airflow_consumer_group")\
     .load()
 
 # Grab just the JSON row data 
@@ -70,13 +72,19 @@ schema = StructType([
     StructField("Astronomical_Twilight", StringType(), True),
 ])
 
+# Parse to get a JSON ready format
 parsed_rows = rows.select(from_json(col("value"), schema).alias("data")).select("data.*")
 
+# Write parsed rows to JSON files with a write stream
 query = parsed_rows.writeStream \
     .format("json") \
-    .option("path", "tmp_output_json") \
-    .option("checkpointLocation", "tmp_checkpoints") \
+    .option("path", "/opt/spark-data/raw") \
+    .option("checkpointLocation", "/opt/spark-datacheckpoints") \
     .outputMode("append") \
     .start()
 
-query.awaitTermination()
+# How long we should consume for
+
+print("================================ WROTE TO RAW DATA ================================")
+query.awaitTermination(15)
+spark.stop()

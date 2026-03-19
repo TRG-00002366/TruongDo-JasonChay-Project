@@ -67,15 +67,13 @@ wind_speed_mean = df["Wind_Speed(mph)"].mean()
 wind_speed_std = df["Wind_Speed(mph)"].std()
 
 # Boolean probabilities
-bool_cols = [
-"Amenity","Bump","Crossing","Give_Way","Junction","No_Exit",
+bool_cols = ["Amenity","Bump","Crossing","Give_Way","Junction","No_Exit",
 "Railway","Roundabout","Station","Stop","Traffic_Calming",
-"Traffic_Signal","Turning_Loop"
-]
+"Traffic_Signal","Turning_Loop"]
 
 bool_probs = {c: df[c].mean() for c in bool_cols}
 
-# Create a city cluster table from 
+# Create city clusters
 city_centers = (
     df.groupby(["City","State"])
     .agg(

@@ -45,6 +45,7 @@ def parse_float(x):
     except:
         return None
 
+# Adds seconds to timestamp if it's missing
 def standardize_timestamp(x):
     if x is None or str(x).strip() == "" or str(x).strip().upper() == "NULL":
         return None
