@@ -1,7 +1,9 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, BooleanType
-import time
+from datetime import datetime
+import os
+import shutil
 
 spark = SparkSession.builder\
     .appName("SparkStreamingConsumer")\
@@ -75,16 +77,24 @@ schema = StructType([
 # Parse to get a JSON ready format for the ETL processes to use
 parsed_rows = rows.select(from_json(col("value"), schema).alias("data")).select("data.*")
 
+# Clear output directory for new output
+if os.path.exists("/opt/spark-data/raw") and os.path.isdir("/opt/spark-data/raw"):
+    shutil.rmtree("/opt/spark-data/raw")
+if os.path.exists("/opt/spark-data/raw/checkpoints") and os.path.isdir("/opt/spark-data/raw/checkpoints"):
+    shutil.rmtree("/opt/spark-data/raw/checkpoints")
+
+# Stretch goal: for each batch run, create an output folder based on the datetime so that we can store historical data
+# now = datetime.now()
+# formatted_now = now.strftime("%Y-%m-%d %H:%M:%S")
+
 # Write parsed rows to JSON files with a write stream
 query = parsed_rows.writeStream \
     .format("json") \
-    .option("path", "/opt/spark-data/raw") \
+    .option("path", f"/opt/spark-data/raw") \
     .option("checkpointLocation", "/opt/spark-data/raw/checkpoints") \
     .outputMode("append") \
     .start()
 
-# How long we should consume for
-
 print("================================ WROTE TO RAW DATA ================================")
-query.awaitTermination(15)
+query.awaitTermination(30)
 spark.stop()

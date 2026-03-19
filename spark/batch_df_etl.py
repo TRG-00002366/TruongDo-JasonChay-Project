@@ -1,6 +1,6 @@
 import yaml
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, trim, to_timestamp, row_number, hour, count, avg, desc
+from pyspark.sql.functions import col, trim, to_timestamp, row_number, hour, count, avg, desc, round
 from pyspark.sql.types import StringType, IntegerType, DoubleType, BooleanType, TimestampType, StructType, StructField
 from pyspark.sql.window import Window
 from pathlib import Path
@@ -97,7 +97,7 @@ if dedup_conf:
 df.show()
 df.write \
     .mode("overwrite") \
-    .json("/opt/spark-data/silver")
+    .parquet("/opt/spark-data/silver")
 
 
 ##### DataFrame Transformations #####
@@ -108,7 +108,7 @@ output_path = "/opt/spark-data"
 # 1. Accident Information by Hour of Day: Group by hour, calculate cols: 'total_accidents', 'avg_serverity'
 hour_of_day_summary = df.withColumn("hour_of_day", hour(col("Start_Time"))).groupBy("hour_of_day").agg(
     count("*").alias("total_accidents"),
-    avg("Severity").alias("avg_severity")
+    round(avg("Severity"), 2).alias("avg_severity")
 ).orderBy("hour_of_day")
 
 hour_of_day_summary.write\
@@ -116,6 +116,7 @@ hour_of_day_summary.write\
     .partitionBy("hour_of_day") \
     .parquet(f"{output_path}/analysis1")
 
+hour_of_day_summary.show(24)
 
 # 2. Top 10 Weather Conditions: Identify Weather conditions with the highest accident concentrations using Spark SQL window functions
 weather_counts = df.filter(col("Weather_Condition").isNotNull()).groupBy("Weather_Condition").agg(count("*").alias("accident_count"))
@@ -127,17 +128,21 @@ top_10_weather.write \
     .partitionBy("Weather_Condition") \
     .parquet(f"{output_path}/analysis2")
 
+top_10_weather.show()
+
 # 3. Average Weather Condition Statistics Per Severity of Accident
 weather_conditions = df.filter(col("Severity").isNotNull()).groupBy("Severity").agg(
-    avg("Precipitation(in)").alias("avg_precipitation(in)"),
-    avg("Temperature(F)").alias("avg_temperature(F)"),
-    avg("Visibility(mi)").alias("avg_visibility(mi)"),
-)
+    round(avg("Precipitation(in)"), 2).alias("avg_precipitation(in)"),
+    round(avg("Temperature(F)"), 2).alias("avg_temperature(F)"),
+    round(avg("Visibility(mi)"), 2).alias("avg_visibility(mi)")
+).orderBy("Severity")
 
 weather_conditions.write \
     .mode("overwrite") \
     .partitionBy("Severity") \
     .parquet(f"{output_path}/analysis3")
+
+weather_conditions.show()
 
 # 4. Accident Count by State
 state_accidents = df.filter(col("State").isNotNull()).groupBy("State").agg(count("*").alias("accident_count"))
@@ -148,5 +153,7 @@ top_10_states.write \
     .mode("overwrite") \
     .partitionBy("State") \
     .parquet(f"{output_path}/analysis4")
+
+top_10_states.show()
 
 spark.stop()
