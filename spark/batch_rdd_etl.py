@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import avg
+from pyspark.sql.functions import avg, col, when, upper, trim, try_to_timestamp
 import shutil
+import yaml
 import os 
 import glob
 import sys
@@ -27,7 +28,10 @@ spark = (
 )
 
 spark.sparkContext.setLogLevel("WARN")
-json_files = glob.glob("/opt/spark-data/raw/*.json")
+#json_files = glob.glob("/opt/spark-data/raw/*.json")
+
+print(os.getcwd())
+json_files = glob.glob("data/raw/*.json")
 
 if not json_files:
     print("No JSON files found in /opt/spark-data/raw")
@@ -37,161 +41,105 @@ if not json_files:
 # Read from RAW (stream output)
 df = spark.read.json(json_files)
 
-
-df.write.json("opt/spark-data/clean")
-sys.exit(0)
-
 if len(df.columns) == 0:
     print("JSON files found, but schema is empty")
     spark.stop()
     sys.exit(0)
 
-df.write.mode("overwrite").parquet("/opt/spark-data/silver")
+# df.write.mode("overwrite").parquet("/opt/spark-data/silver")
 
-df = spark.read.parquet("/opt/spark-data/silver")
-df.show(5)
-df.printSchema()
+# df = spark.read.parquet("/opt/spark-data/silver")
+# df.show(5)
+# df.printSchema()
 
-#Convert to RDD
-rdd = df.rdd
+# Load schema
+with open("config/schema.yaml", "r") as f:
+    schema = yaml.safe_load(f)["columns"]
 
+# -----------------------------
+# STEP 1: Normalize NULL values
+# -----------------------------
+for col_name in schema:
+    df = df.withColumn(
+        col_name,
+        when(
+            col(col_name).isNull() |
+            (trim(col(col_name)) == "") |
+            (upper(trim(col(col_name))) == "NULL"),
+            None
+        ).otherwise(col(col_name))
+    )
+
+# -----------------------------
+# STEP 2: Apply transformations
+# -----------------------------
+for col_name, cfg in schema.items():
+
+    # STRING handling
+    if cfg["type"] == "string":
+        if cfg.get("strip"):
+            df = df.withColumn(col_name, trim(col(col_name)))
+        if cfg.get("uppercase"):
+            df = df.withColumn(col_name, upper(col(col_name)))
+
+    # FLOAT handling
+    elif cfg["type"] == "float":
+        df = df.withColumn(col_name, col(col_name).cast("double"))
+
+    
+# -----------------------------
+# STEP 3: Fill numeric NULLs with avg
+# -----------------------------
 numeric_cols = [
-    "Temperature(F)",
-    "Wind_Chill(F)",
-    "Humidity(%)",
-    "Pressure(in)",
-    "Visibility(mi)",
-    "Wind_Speed(mph)",
-    "Precipitation(in)"
+    col_name for col_name, cfg in schema.items()
+    if cfg.get("type") == "float" and cfg.get("fillna") == "avg"
 ]
 
-avg_values = (
-    df.select([avg(col).alias(col) for col in numeric_cols])
-      .first()
-      .asDict()
-)
+avg_exprs = [avg(col(c)).alias(c) for c in numeric_cols]
+avg_values = df.select(avg_exprs).collect()[0].asDict()
 
 df = df.fillna(avg_values)
 
-# Helper functions
-def parse_float(x):
-    try:
-        if x is None or str(x).strip() == "" or str(x).strip().upper() == "NULL":
-            return None
-        return float(x)
-    except:
-        return None
+# -----------------------------
+# STEP 4: Apply validation rules
+# -----------------------------
+for col_name, cfg in schema.items():
 
-# Adds seconds to timestamp if it's missing
-def standardize_timestamp(x):
-    if x is None or str(x).strip() == "" or str(x).strip().upper() == "NULL":
-        return None
-    s = str(x).strip()
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
-        try:
-            return datetime.strptime(s, fmt).strftime("%Y-%m-%d %H:%M:%S")
-        except:
-            pass
-    return None
+    # Required fields
+    if cfg.get("required"):
+        df = df.filter(col(col_name).isNotNull())
 
+    # Numeric ranges
+    if cfg.get("type") == "float":
+        if "min" in cfg:
+            df = df.filter((col(col_name).isNull()) | (col(col_name) >= cfg["min"]))
+        if "max" in cfg:
+            df = df.filter((col(col_name).isNull()) | (col(col_name) <= cfg["max"]))
 
-# Filter out bad rows
-
-filtered_rdd = rdd.filter(lambda row:
-    row["ID"] is not None and                        
-    row["Weather_Condition"] is not None and                   
-    str(row["Weather_Condition"]).strip() != "" and
-    str(row["Weather_Condition"]).strip().upper() != "NULL"
+# -----------------------------
+# STEP 5: Aggregation
+# -----------------------------
+weather_counts_df = (
+    df.groupBy("Weather_Condition")
+      .count()
+      .orderBy(col("count").desc())
 )
 
+# -----------------------------
+# STEP 6: Save output
+# -----------------------------
+#output_path = "/opt/spark-data/clean"
+output_path = "data/silver"
 
-
-# Clean + validate rows
-
-def clean_and_validate(row):
-    accident_id = str(row["ID"]).strip()
-
-    start_time = standardize_timestamp(row["Start_Time"])
-    end_time = standardize_timestamp(row["End_Time"])
-    weather_timestamp = standardize_timestamp(row["Weather_Timestamp"])
-
-    temperature = parse_float(row["Temperature(F)"])
-    wind_chill = parse_float(row["Wind_Chill(F)"])
-    humidity = parse_float(row["Humidity(%)"])
-    pressure = parse_float(row["Pressure(in)"])
-    visibility = parse_float(row["Visibility(mi)"])
-    wind_speed = parse_float(row["Wind_Speed(mph)"])
-    precipitation = parse_float(row["Precipitation(in)"])
-
-    weather_condition = str(row["Weather_Condition"]).strip().upper()
-
-    # Validate quantitative values make sense
-    if humidity is not None and not (0 <= humidity <= 100):
-        return None
-    if visibility is not None and visibility < 0:
-        return None
-    if wind_speed is not None and wind_speed < 0:
-        return None
-    if precipitation is not None and precipitation < 0:
-        return None
-    if temperature is not None and not (-80 <= temperature <= 140):
-        return None
-    if wind_chill is not None and not (-120 <= wind_chill <= 140):
-        return None
-    if pressure is not None and not (25 <= pressure <= 35):
-        return None
-
-    # Require valid standardized timestamps
-    if start_time is None:
-        return None
-
-    return {
-        "ID": accident_id,
-        "Start_Time": start_time,
-        "End_Time": end_time,
-        "Weather_Timestamp": weather_timestamp,
-        "Weather_Condition": weather_condition,
-        "Temperature(F)": temperature,
-        "Wind_Chill(F)": wind_chill,
-        "Humidity(%)": humidity,
-        "Pressure(in)": pressure,
-        "Visibility(mi)": visibility,
-        "Wind_Speed(mph)": wind_speed,
-        "Precipitation(in)": precipitation
-    }
-
-cleaned_rdd = filtered_rdd.map(clean_and_validate).filter(lambda x: x is not None)
-
-
-# Count accidents by weather condition
-
-weather_counts = (
-    cleaned_rdd
-    .map(lambda row: (row["Weather_Condition"], 1))
-    .reduceByKey(lambda a, b: a + b)
-    .sortBy(lambda kv: kv[1], ascending=False)
-)
-
-# total accident using RDDs
-weather_counts = (
-    cleaned_rdd
-    .map(lambda row: (row["Weather_Condition"], 1))
-    .reduceByKey(lambda a, b: a + b)
-)
-
-
-# sort output is readable (most accidents first)
-weather_counts_sorted = weather_counts.sortBy(lambda kv: kv[1], ascending=False)
-
-# Output path
-output_path = "/opt/spark-data/clean"
-
-#Delete output folder if exist
 if os.path.exists(output_path):
     shutil.rmtree(output_path)
 
-#Save as a text file
-output = weather_counts_sorted.map(lambda kv: f"{kv[0]}\t{kv[1]}")
-output.saveAsTextFile(output_path)
+(
+    weather_counts_df
+    .selectExpr("concat(Weather_Condition, '\t', count) as value")
+    .write
+    .mode("overwrite")
+    .json(output_path)
+)
 
 spark.stop()

@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-df = pd.read_csv("sampled_accidents.csv")
+df = pd.read_csv("data/sampled_accidents.csv")
 synthetic_df = pd.read_csv("generated_accidents.csv")
 
 

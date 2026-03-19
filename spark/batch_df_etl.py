@@ -1,46 +1,129 @@
+import yaml
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import (col, count, avg, hour, row_number, desc, )
+from pyspark.sql.functions import col, trim, to_timestamp, row_number, hour, count, avg, desc
+from pyspark.sql.types import StringType, IntegerType, DoubleType, BooleanType, TimestampType, StructType, StructField
 from pyspark.sql.window import Window
 
-spark = SparkSession.builder.appName("Batch DF ETL Process").master("local[*]").getOrCreate()
 
-# TODO
-filepath = "opt/spark-data/bronze"
-hourly_output_path = "/home/truongdo/TruongDo-JasonChay-Project/outputs/hour_of_day_summary"
-top_weather_output_path = "/home/truongdo/TruongDo-JasonChay-Project/outputs/top_weather_conditions"
+# ----------------------------
+# Initialize Spark
+# ----------------------------
+spark = SparkSession.builder \
+    .appName("Batch JSON Processor") \
+    .getOrCreate()
 
-# Read parquet into a DataFrame
-df = spark.read.parquet(filepath)
+# ----------------------------
+# Load YAML schema
+# ----------------------------
+with open("config/schema2.yaml", "r") as f:
+    schema_yaml = yaml.safe_load(f)
 
-# TODO
-##### Transformations
-    # Write each output to Parquet, partitioned and bucketed where appropriate.
-    # Use **caching** on the base DataFrame to speed up multiple downstream transformations.
+# ----------------------------
+# Map YAML types → Spark types
+# ----------------------------
+type_mapping = {
+    "string": StringType(),
+    "integer": IntegerType(),
+    "double": DoubleType(),
+    "boolean": BooleanType(),
+    "timestamp": TimestampType()
+}
+
+# ----------------------------
+# Build Spark StructType
+# ----------------------------
+fields = []
+for col_def in schema_yaml["columns"]:
+    fields.append(
+        StructField(
+            col_def["name"],
+            type_mapping[col_def["type"]],
+            col_def["nullable"]
+        )
+    )
+
+spark_schema = StructType(fields)
+
+# ----------------------------
+# Read multiple JSON files
+# ----------------------------
+df = spark.read \
+    .schema(spark_schema) \
+    .json("data/raw")
+
+# ----------------------------
+# Cleaning transformations
+# ----------------------------
+for col_def in schema_yaml["columns"]:
+    col_name = col_def["name"]
+
+    # Trim strings
+    if col_def.get("trim"):
+        df = df.withColumn(col_name, trim(col(col_name)))
+
+    # Convert timestamps
+    if col_def["type"] == "timestamp":
+        df = df.withColumn(col_name, to_timestamp(col(col_name)))
+
+# ----------------------------
+# Validation rules
+# ----------------------------
+for col_def in schema_yaml["columns"]:
+    col_name = col_def["name"]
+
+    # NOT NULL
+    if not col_def["nullable"]:
+        df = df.filter(col(col_name).isNotNull())
+
+    # Min constraint
+    if "min" in col_def:
+        df = df.filter(col(col_name) >= col_def["min"])
+
+    # Max constraint
+    if "max" in col_def:
+        df = df.filter(col(col_name) <= col_def["max"])
+
+# ----------------------------
+# Deduplication
+# ----------------------------
+dedup_conf = schema_yaml.get("deduplication")
+
+if dedup_conf:
+    keys = dedup_conf["keys"]
+    order_col = dedup_conf["order_by"]
+
+    window_spec = Window.partitionBy(*keys).orderBy(col(order_col).desc())
+
+    df = df.withColumn("row_num", row_number().over(window_spec)) \
+           .filter(col("row_num") == 1) \
+           .drop("row_num")
+
+# ----------------------------
+# Write output
+# ----------------------------
+df.write \
+    .mode("overwrite") \
+    .json("data/silver/")
+
 
 # 1. Accident Information by Hour of Day: Group by hour, calculate cols: 'total_accidents', 'avg_duration_mintues', 'avg_serverity'
-hour_of_day_summary = (
-    df.withColumn("hour_of_day", hour(col("Start_Time"))).groupBy("hour_of_day").agg(count("*").alias("total_accidents"),
-          avg("duration_minutes").alias("avg_duration_minutes"),
-          avg("Severity").alias("avg_severity"))
-      .orderBy("hour_of_day"))
+# hour_of_day_summary = (
+#     df.withColumn("hour_of_day", hour(col("Start_Time"))).groupBy("hour_of_day").agg(
+#         count("*").alias("total_accidents"),
+#         avg("duration_minutes").alias("avg_duration_minutes"),
+#         avg("Severity").alias("avg_severity"))
+#     .orderBy("hour_of_day"))
+# hour_of_day_summary.write \
+#     .mode("overwrite") \
+#     .partitionBy("hour_of_day") \
+#     .json("data/analysis1") 
 
-(hour_of_day_summary.write 
-    .mode("overwrite") 
-    .partitionBy("hour_of_day") 
-    .parquet(hourly_output_path))
 # 2. Top 10 Weather Conditions: Identify Weather conditions with the highest accident concentrations using Spark SQL window functions
 weather_counts = (df.filter(col("Weather_Condition").isNotNull()).groupBy("Weather_Condition").agg(count("*").alias("accident_count")))
-
 weather_window = Window.orderBy(desc("accident_count"))
-
 top_10_weather = (weather_counts.withColumn("rank", row_number().over(weather_window)).filter(col("rank") <= 10))
-
 (top_10_weather.write 
     .mode("overwrite") 
-    .parquet(top_weather_output_path))
-
-# 3. Weather Severity Impact: Join orders with a static 'weather.csv' reference, then aggregate severity statistics per weather condition
-
-# 4. Weather Conditions Breakdown: Understand accident distribution across weather conditions
+    .json("data/analysis2"))
 
 spark.stop()

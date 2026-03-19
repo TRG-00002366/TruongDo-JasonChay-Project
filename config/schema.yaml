@@ -1,0 +1,64 @@
+columns:
+  ID:
+    type: string
+    required: true
+    strip: true
+
+  Start_Time:
+    type: timestamp
+    required: true
+    formats:
+      - "yyyy-MM-dd HH:mm:ss"
+
+  End_Time:
+    type: timestamp
+    required: false
+    formats:
+      - "yyyy-MM-dd HH:mm:ss"
+
+  Weather_Timestamp:
+    type: timestamp
+    required: false
+    formats:
+      - "yyyy-MM-dd HH:mm:ss"
+
+  Weather_Condition:
+    type: string
+    required: true
+    strip: true
+    uppercase: true
+
+  Temperature(F):
+    type: float
+    min: -80
+    max: 140
+    fillna: avg
+
+  Wind_Chill(F):
+    type: float
+    min: -120
+    max: 140
+    fillna: avg
+
+  Humidity(%):
+    type: float
+    min: 0
+    max: 100
+    fillna: avg
+
+  Pressure(in):
+    type: float
+    min: 20
+    max: 35
+    fillna: avg
+
+  Visibility(mi):
+    type: float
+    min: 0
+    fillna: avg
+
+  
+  Precipitation(in):
+    type: float
+    min: 0
+    fillna: avg
