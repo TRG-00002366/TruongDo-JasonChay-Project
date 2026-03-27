@@ -73,7 +73,7 @@ with DAG(
         bash_command=(
             "spark-submit "
             "--master spark://spark-master:7077 "
-            "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 "
+            "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,net.snowflake:spark-snowflake_2.12:3.1.5  "
             "/opt/spark-jobs/stream_consumer.py {{ ds }}"
         )
     )
@@ -102,4 +102,4 @@ with DAG(
     end = EmptyOperator(task_id="end")
 
     # Define dependencies
-    start >> check_kafka_topic_task >> run_streaming_job >> wait_for_raw_data >> run_df_etl >> validate_output_task >> end
+    start >> check_kafka_topic_task >> run_streaming_job >> end # wait_for_raw_data >> run_df_etl >> validate_output_task >> end

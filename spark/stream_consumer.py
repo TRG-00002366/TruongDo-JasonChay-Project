@@ -87,12 +87,36 @@ if os.path.exists("/opt/spark-data/raw/checkpoints") and os.path.isdir("/opt/spa
 # now = datetime.now()
 # formatted_now = now.strftime("%Y-%m-%d %H:%M:%S")
 
+# Snowflake connection 
+sfOptions = {
+    "sfURL": "DGWMVPP-ZEC99782.snowflakecomputing.com",
+    "sfUser": "JASONCHAY",
+    "sfPassword": "2bbt2WXurJDwTxa",
+    "sfDatabase": "ACCIDENT_DB",
+    "sfSchema": "BRONZE",
+    "sfWarehouse": "COMPUTE_WH"
+}
+
 # Write parsed rows to JSON files with a write stream
+# query = parsed_rows.writeStream \
+#     .format("json") \
+#     .option("path", f"/opt/spark-data/raw") \
+#     .option("checkpointLocation", "/opt/spark-data/raw/checkpoints") \
+#     .outputMode("append") \
+#     .start()
+
+def write_to_snowflake(batch_df, batch_id):
+    batch_df.write \
+        .format("snowflake") \
+        .options(**sfOptions) \
+        .option("dbtable", "raw_accidents") \
+        .mode("append") \
+        .save()
+
 query = parsed_rows.writeStream \
-    .format("json") \
-    .option("path", f"/opt/spark-data/raw") \
-    .option("checkpointLocation", "/opt/spark-data/raw/checkpoints") \
+    .foreachBatch(write_to_snowflake) \
     .outputMode("append") \
+    .option("checkpointLocation", "/tmp/checkpoints/snowflake") \
     .start()
 
 print("================================ WROTE TO RAW DATA ================================")

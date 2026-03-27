@@ -48,6 +48,7 @@ spark_schema = StructType(fields)
 # Read multiple JSON files
 # input_path = "data/raw/*.json"
 input_path = "/opt/spark-data/raw/*.json"
+# input_path = <snowflake>
 df = spark.read \
     .schema(spark_schema) \
     .json(input_path)
