@@ -12,21 +12,13 @@ from airflow.sensors.python import PythonSensor
 import os
 import glob
 
-default_args = {
-    "owner": "accidents",
-    "retries": 1,
-    "retry_delay": timedelta(minutes=5),
-    "email_on_failure":True,
-}
-
-
+# Helper functions for our PythonOperators
 def check_kafka_topic():
     """Uses a Kafka consumer to make sure the Kafka topic exists"""
 
     consumer = KafkaConsumer(bootstrap_servers="kafka:9092")
     if "traffic_accidents" not in consumer.topics():
         raise Exception("Topic does not exist")
-
 
 def raw_files_ready():
     """Checks the output directory for raw data posted by the consumer and continues when it sees data"""
@@ -48,9 +40,14 @@ def validate_output():
     # TODO:
     print("Output validation passed")
 
-
 # Creating DAG
-# Spark jobs will be run with BashOperators that spark-submit our 
+default_args = {
+    "owner": "accidents",
+    "retries": 1,
+    "retry_delay": timedelta(minutes=5),
+    "email_on_failure":True,
+}
+
 with DAG(
     dag_id="accidents_stream_pipeline",
     start_date=datetime(2026, 3, 1),
@@ -60,6 +57,7 @@ with DAG(
     tags=["airflow", "kafka", "spark", "accidents"],
 ) as dag:
     # Create tasks
+    # Spark jobs will be run with BashOperators that spark-submit our 
 
     start = EmptyOperator(
         task_id="start"

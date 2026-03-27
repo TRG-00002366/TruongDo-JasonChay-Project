@@ -1,4 +1,6 @@
+# pip installs
 faker
 pandas
-numpy
+pyyaml
+pyspark
 kafka-python
