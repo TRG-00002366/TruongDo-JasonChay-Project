@@ -40,7 +40,7 @@ schema = StructType([
     StructField("City", StringType(), True),
     StructField("County", StringType(), True),
     StructField("State", StringType(), True),
-    StructField("Zipcode", StringType(), True),
+    StructField("Zipcode", IntegerType(), True),
     StructField("Country", StringType(), True),
     StructField("Timezone", StringType(), True),
     StructField("Airport_Code", StringType(), True),
