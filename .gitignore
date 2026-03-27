@@ -55,6 +55,17 @@ cover/
 *.mo
 *.pot
 
+#Spark
+data/analysis1/*
+data/analysis2/*
+data/analysis3/*
+data/analysis4/*
+data/raw/*
+data/raw/_spark_metadata/*
+data/silver/*
+data/gold/*
+data/checkpoints/*
+
 # Django stuff:
 *.log
 local_settings.py
