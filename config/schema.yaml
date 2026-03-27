@@ -43,7 +43,7 @@ columns:
     nullable: true
     min: 0
 
-  - name: Description
+  - name: Street
     type: string
     nullable: true
     trim: true
@@ -58,7 +58,7 @@ columns:
     nullable: true
 
   - name: Zipcode
-    type: integer
+    type: string
     nullable: true
 
   - name: Country
@@ -94,6 +94,42 @@ columns:
 
   - name: Traffic_Signal
     type: boolean
+    nullable: true
+
+  - name: Timezone
+    type: string
+    nullable: true
+
+  - name: Wind_Chill(F)
+    type: double
+    nullable: true
+
+  - name: Pressure(in)
+    type: double
+    nullable: true
+
+  - name: Wind_Direction
+    type: string
+    nullable: true
+
+  - name: Junction
+    type: boolean
+    nullable: true
+
+  - name: Stop
+    type: boolean
+    nullable: true
+
+  - name: Traffic_Calming
+    type: boolean
+    nullable: true
+
+  - name: Sunrise_Sunset
+    type: string
+    nullable: true
+
+  - name: Astronomical_Twilight
+    type: string
     nullable: true
 
 deduplication:
