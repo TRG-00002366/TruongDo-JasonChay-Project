@@ -97,13 +97,13 @@ sfOptions = {
     "sfWarehouse": "COMPUTE_WH"
 }
 
-# Write parsed rows to JSON files with a write stream
-# query = parsed_rows.writeStream \
-#     .format("json") \
-#     .option("path", f"/opt/spark-data/raw") \
-#     .option("checkpointLocation", "/opt/spark-data/raw/checkpoints") \
-#     .outputMode("append") \
-#     .start()
+#Write parsed rows to JSON files with a write stream
+query = parsed_rows.writeStream \
+    .format("json") \
+    .option("path", f"/opt/spark-data/raw") \
+    .option("checkpointLocation", "/opt/spark-data/raw/checkpoints") \
+    .outputMode("append") \
+    .start()
 
 def write_to_snowflake(batch_df, batch_id):
     batch_df.write \

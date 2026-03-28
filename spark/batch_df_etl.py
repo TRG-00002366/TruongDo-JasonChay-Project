@@ -94,6 +94,8 @@ if dedup_conf:
            .filter(col("row_num") == 1) \
            .drop("row_num")
 
+silver_df = df
+
 # Writing processed columns to silver
 df.show()
 df.write \
@@ -105,6 +107,24 @@ df.write \
 
 # output_path = "data"
 output_path = "/opt/spark-data"
+
+snowflake_options = {
+    "sfURL": "DGWMVPP-ZEC99782.snowflakecomputing.com",
+    "sfUser": "JASONCHAY",
+    "sfPassword": "2bbt2WXurJDwTxa",
+    "sfDatabase": "ACCIDENT_DB",
+    "sfSchema": "SILVER",
+    "sfWarehouse": "COMPUTE_WH",
+}
+
+(
+    silver_df.write
+    .format("snowflake")
+    .options(**snowflake_options)
+    .option("dbtable", "ACCIDENTS_SILVER")
+    .mode("append")
+    .save()
+)
 
 # 1. Accident Information by Hour of Day: Group by hour, calculate cols: 'total_accidents', 'avg_serverity'
 hour_of_day_summary = df.withColumn("hour_of_day", hour(col("Start_Time"))).groupBy("hour_of_day").agg(
