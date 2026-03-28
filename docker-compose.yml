@@ -90,7 +90,9 @@ services:
       - pipeline-network
 
   spark-master:
-    image: apache/spark:3.5.0
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     container_name: pipeline-spark-master
     user: root
     ports:
@@ -111,7 +113,9 @@ services:
       - pipeline-network
 
   spark-worker:
-    image: apache/spark:3.5.0
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     container_name: pipeline-spark-worker
     user: root
     depends_on:

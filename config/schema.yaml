@@ -43,6 +43,10 @@ columns:
     nullable: true
     min: 0
 
+  - name: Description
+    type: string
+    nullable: true
+
   - name: Street
     type: string
     nullable: true
@@ -52,6 +56,10 @@ columns:
     type: string
     nullable: true
     trim: true
+
+  - name: County
+    type: string
+    nullable: true
 
   - name: State
     type: string
@@ -65,11 +73,24 @@ columns:
     type: string
     nullable: true
 
+  - name: Timezone
+    type: string
+    nullable: true
+
+  - name: Airport_Code
+    type: string
+    nullable: true
+  
+  - name: Weather_Timestamp
+    type: string
+    nullable: true
+
   - name: Temperature(F)
     type: double
     nullable: true
+    min: 0
 
-  - name: Precipitation(in)
+  - name: Wind_Chill(F)
     type: double
     nullable: true
 
@@ -78,8 +99,27 @@ columns:
     nullable: true
     min: 0
     max: 100
-
+  
+  - name: Pressure(in)
+    type: double
+    nullable: true
+    min: 0
+  
   - name: Visibility(mi)
+    type: double
+    nullable: true
+    min: 0
+
+  - name: Wind_Direction
+    type: string
+    nullable: true
+
+  - name: Wind_Speed(mph)
+    type: double
+    nullable: true
+    min: 0
+
+  - name: Precipitation(in)
     type: double
     nullable: true
     min: 0
@@ -92,27 +132,35 @@ columns:
     type: boolean
     nullable: true
 
-  - name: Traffic_Signal
+  - name: Bump
     type: boolean
     nullable: true
 
-  - name: Timezone
-    type: string
+  - name: Crossing
+    type: boolean
     nullable: true
-
-  - name: Wind_Chill(F)
-    type: double
+  
+  - name: Give_Way
+    type: boolean
     nullable: true
-
-  - name: Pressure(in)
-    type: double
-    nullable: true
-
-  - name: Wind_Direction
-    type: string
-    nullable: true
-
+  
   - name: Junction
+    type: boolean
+    nullable: true
+
+  - name: No_Exit
+    type: boolean
+    nullable: true
+
+  - name: Railway
+    type: boolean
+    nullable: true
+
+  - name: Roundabout
+    type: boolean
+    nullable: true
+
+  - name: Station
     type: boolean
     nullable: true
 
@@ -123,9 +171,25 @@ columns:
   - name: Traffic_Calming
     type: boolean
     nullable: true
+  
+  - name: Traffic_Signal
+    type: boolean
+    nullable: true
+
+  - name: Turning_Loop
+    type: boolean
+    nullable: true
 
   - name: Sunrise_Sunset
     type: string
+    nullable: true
+
+  - name: Civil_Twilight
+    type: boolean
+    nullable: true
+
+  - name: Nautical_Twilight
+    type: boolean
     nullable: true
 
   - name: Astronomical_Twilight

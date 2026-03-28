@@ -22,6 +22,7 @@ with open(schema_path, "r") as f:
 # with open("/opt/spark-config/schema.yaml", "r") as f:
 #     schema_yaml = yaml.safe_load(f)
 
+print(schema_yaml["columns"])
 
 # Map YAML types to Spark types
 type_mapping = {
@@ -45,13 +46,46 @@ for col_def in schema_yaml["columns"]:
 
 spark_schema = StructType(fields)
 
-# Read multiple JSON files
+#####
+##### READ DATA FROM BRONZE LAYER
+#####
+print("============================= Reading =============================")
+
+# LOCAL FILE: Read multiple JSON files
 # input_path = "data/raw/*.json"
-input_path = "/opt/spark-data/raw/*.json"
-# input_path = <snowflake>
+# input_path = "/opt/spark-data/raw/*.json"
+# df = spark.read \
+#     .schema(spark_schema) \
+#     .json(input_path)
+
+# SNOWFLAKE: Read bronze table
+sfOptions = {
+    "sfURL": "DGWMVPP-ZEC99782.snowflakecomputing.com",
+    "sfUser": "JASONCHAY",
+    "sfPassword": "2bbt2WXurJDwTxa",
+    "sfDatabase": "ACCIDENT_DB",
+    "sfSchema": "BRONZE",
+    "sfWarehouse": "COMPUTE_WH"
+}
+
 df = spark.read \
-    .schema(spark_schema) \
-    .json(input_path)
+    .format("snowflake") \
+    .options(**sfOptions) \
+    .option("dbtable", "RAW_ACCIDENTS") \
+    .load()
+print(df.columns)
+
+# Fix "" inside of column names
+rename_map = {'"Distance(mi)"': "Distance(mi)",
+              '"Temperature(F)"': "Temperature(F)",
+              '"Wind_Chill(F)"': "Wind_Chill(F)",
+              '"Humidity(%)"': "Humidity(%)",
+              '"Pressure(in)"': "Pressure(in)",
+              '"Visibility(mi)"': "Visibility(mi)",
+              '"Wind_Speed(mph)"': "Wind_Speed(mph)",
+              '"Precipitation(in)"': "Precipitation(in)"
+              }
+df = df.withColumnsRenamed(rename_map)
 
 # Cleaning transformations
 for col_def in schema_yaml["columns"]:
@@ -94,37 +128,35 @@ if dedup_conf:
            .filter(col("row_num") == 1) \
            .drop("row_num")
 
-silver_df = df
+#####
+##### WRITING PROCESSED DATA
+#####
 
-# Writing processed columns to silver
-df.show()
-df.write \
-    .mode("overwrite") \
-    .parquet("/opt/spark-data/silver")
+print("============================= Writing =============================")
+
+# LOCAL FILE: Saving to silver folder
+# df.write \
+#     .mode("overwrite") \
+#     .parquet("/opt/spark-data/silver")
+
+# SNOWFLAKE: Saving to silver table
+sfOptions["sfSchema"] = "SILVER"
+
+(
+    df.write
+    .format("snowflake")
+    .options(**sfOptions)
+    .option("dbtable", "cleaned_accidents")
+    .mode("append")
+    .save()
+)
+
 
 
 ##### DataFrame Transformations #####
 
 # output_path = "data"
 output_path = "/opt/spark-data"
-
-snowflake_options = {
-    "sfURL": "DGWMVPP-ZEC99782.snowflakecomputing.com",
-    "sfUser": "JASONCHAY",
-    "sfPassword": "2bbt2WXurJDwTxa",
-    "sfDatabase": "ACCIDENT_DB",
-    "sfSchema": "SILVER",
-    "sfWarehouse": "COMPUTE_WH",
-}
-
-(
-    silver_df.write
-    .format("snowflake")
-    .options(**snowflake_options)
-    .option("dbtable", "ACCIDENTS_SILVER")
-    .mode("append")
-    .save()
-)
 
 # 1. Accident Information by Hour of Day: Group by hour, calculate cols: 'total_accidents', 'avg_serverity'
 hour_of_day_summary = df.withColumn("hour_of_day", hour(col("Start_Time"))).groupBy("hour_of_day").agg(

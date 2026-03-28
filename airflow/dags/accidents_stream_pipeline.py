@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 from airflow.sensors.filesystem import FileSensor
 from airflow.hooks.base import BaseHook
 from kafka import KafkaConsumer
@@ -68,15 +69,32 @@ with DAG(
         python_callable=check_kafka_topic
     )
 
+    install_dependencies = BashOperator(
+        task_id="install_dependencies",
+        bash_command=(
+            "docker exec -i pipeline-spark-master pip install pyyaml"
+        )
+    )
+
     run_streaming_job = BashOperator(
         task_id="run_streaming_job",
         bash_command=(
-            "spark-submit "
+            "docker exec -i pipeline-spark-master /opt/spark/bin/spark-submit "
             "--master spark://spark-master:7077 "
-            "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,net.snowflake:spark-snowflake_2.12:3.1.5  "
+            "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 "
             "/opt/spark-jobs/stream_consumer.py {{ ds }}"
         )
     )
+
+    # run_streaming_job = SparkSubmitOperator(
+    #     task_id="run_streaming_job",
+    #     application="/opt/spark-jobs/stream_consumer.py",
+    #     packages="org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0",
+    #     conn_id="spark_default",
+    #     conf={
+    #         "spark.master": "spark://spark-master:7077"
+    #     }
+    # )
 
     wait_for_raw_data = PythonSensor(
     task_id="wait_for_raw_data",
@@ -89,9 +107,9 @@ with DAG(
     run_df_etl = BashOperator(
         task_id="run_df_etl",
         bash_command=(
-            "spark-submit "
+            "docker exec -i pipeline-spark-master /opt/spark/bin/spark-submit "
             "--master spark://spark-master:7077 "
-            "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,net.snowflake:spark-snowflake_2.12:3.1.5,net.snowflake:snowflake-jdbc:3.24.2 "
+            #"--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,net.snowflake:spark-snowflake_2.12:3.1.5,net.snowflake:snowflake-jdbc:3.24.2 "
             "/opt/spark-jobs/batch_df_etl.py {{ ds }}"
         )
     )
@@ -103,4 +121,4 @@ with DAG(
     end = EmptyOperator(task_id="end")
 
     # Define dependencies
-    start >> check_kafka_topic_task >> run_streaming_job >> wait_for_raw_data >> run_df_etl >> validate_output_task >> end
+    start >> check_kafka_topic_task >> run_streaming_job >> install_dependencies >> run_df_etl >> validate_output_task >> end
