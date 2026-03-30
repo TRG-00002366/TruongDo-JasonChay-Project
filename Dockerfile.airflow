@@ -62,6 +62,5 @@ RUN pip install --no-cache-dir \
     confluent-kafka \
     apache-airflow-providers-apache-kafka \
     apache-airflow-providers-apache-spark \
-    pyyaml \
     --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.7.3/constraints-3.10.txt"
  

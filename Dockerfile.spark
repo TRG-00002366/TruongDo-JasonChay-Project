@@ -5,6 +5,9 @@ USER root
 # Remove any conflicting Snowflake jars (defensive)
 RUN rm -f /opt/spark/jars/*snowflake* || true
 
+# Install dependencies
+RUN pip install pyyaml
+
 # Add Snowflake connector (Spark 3.4 version; 3.5 compatible)
 ADD https://repo1.maven.org/maven2/net/snowflake/spark-snowflake_2.12/2.12.0-spark_3.4/spark-snowflake_2.12-2.12.0-spark_3.4.jar /opt/spark/jars/
 

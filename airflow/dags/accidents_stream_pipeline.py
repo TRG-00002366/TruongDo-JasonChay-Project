@@ -69,13 +69,6 @@ with DAG(
         python_callable=check_kafka_topic
     )
 
-    install_dependencies = BashOperator(
-        task_id="install_dependencies",
-        bash_command=(
-            "docker exec -i pipeline-spark-master pip install pyyaml"
-        )
-    )
-
     run_streaming_job = BashOperator(
         task_id="run_streaming_job",
         bash_command=(
@@ -96,13 +89,13 @@ with DAG(
     #     }
     # )
 
-    wait_for_raw_data = PythonSensor(
-    task_id="wait_for_raw_data",
-    python_callable=raw_files_ready,
-    poke_interval=15,
-    timeout=300,
-    mode="poke",
-)
+    # wait_for_raw_data = PythonSensor(
+    #     task_id="wait_for_raw_data",
+    #     python_callable=raw_files_ready,
+    #     poke_interval=15,
+    #     timeout=300,
+    #     mode="poke",
+    # )
 
     run_df_etl = BashOperator(
         task_id="run_df_etl",
@@ -114,11 +107,8 @@ with DAG(
         )
     )
 
-    validate_output_task = PythonOperator(
-        task_id="validate_output",
-        python_callable=validate_output)
-
     end = EmptyOperator(task_id="end")
 
     # Define dependencies
-    start >> check_kafka_topic_task >> run_streaming_job >> install_dependencies >> run_df_etl >> validate_output_task >> end
+    start >> check_kafka_topic_task >> run_streaming_job >> run_df_etl >> end
+  

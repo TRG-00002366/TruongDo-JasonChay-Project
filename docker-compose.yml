@@ -269,6 +269,23 @@ services:
       - pipeline-network
 
 # =============================================================================
+# dbt
+# =============================================================================
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-snowflake:1.7.latest
+    container_name: pipeline-dbt
+    volumes:
+      - ./dbt:/usr/app
+    working_dir: /usr/app
+    environment:
+      DBT_PROFILES_DIR: /usr/app
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["sleep infinity"]
+    networks:
+      - pipeline-network
+
+
+# =============================================================================
 # NETWORKS & VOLUMES
 # =============================================================================
 networks:
