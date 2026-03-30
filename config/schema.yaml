@@ -15,11 +15,11 @@ columns:
     max: 4
 
   - name: Start_Time
-    type: timestamp
+    type: string
     nullable: false
 
   - name: End_Time
-    type: timestamp
+    type: string
     nullable: true
 
   - name: Start_Lat
