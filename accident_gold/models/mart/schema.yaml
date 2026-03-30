@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: accident_stats_by_hour
+    description: "A starter dbt model"
+    columns:
+      - name: hour_of_day
+        description: "The hour of the day from 0-23"
+        data_tests:
+          - unique
+          - not_null
+      - name: total_accidents
+        description: "The total number of accident records (per hour)"
+        data_tests:
+          - not_null
+      - name: avg_severity
+        description: "The average severity of accidents (per hour)"
+        data_tests:
+          - not_null

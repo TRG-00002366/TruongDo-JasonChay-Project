@@ -7,4 +7,4 @@ SELECT
     ROUND(AVG(Severity), 2) AS avg_severity
 FROM {{ source('raw', 'cleaned_accidents') }}
 GROUP BY hour_of_day
-ORDER BY hour_of_day;
+ORDER BY hour_of_day

@@ -275,7 +275,8 @@ services:
     image: ghcr.io/dbt-labs/dbt-snowflake:1.7.latest
     container_name: pipeline-dbt
     volumes:
-      - ./dbt:/usr/app
+      - ./accident_gold:/usr/app
+      - /home/jason/.dbt/profiles.yml:/.dbt/profiles.yml
     working_dir: /usr/app
     environment:
       DBT_PROFILES_DIR: /usr/app

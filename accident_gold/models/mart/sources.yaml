@@ -5,4 +5,4 @@ sources:
     database: ACCIDENT_DB
     schema: SILVER
     tables:
-      - name: clean_accidents
+      - name: cleaned_accidents
