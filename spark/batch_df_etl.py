@@ -22,8 +22,6 @@ with open(schema_path, "r") as f:
 # with open("/opt/spark-config/schema.yaml", "r") as f:
 #     schema_yaml = yaml.safe_load(f)
 
-print(schema_yaml["columns"])
-
 # Map YAML types to Spark types
 type_mapping = {
     "string": StringType(),
@@ -73,17 +71,16 @@ df = spark.read \
     .options(**sfOptions) \
     .option("dbtable", "RAW_ACCIDENTS") \
     .load()
-print(df.columns)
 
-# Fix "" inside of column names
-rename_map = {'"Distance(mi)"': "Distance(mi)",
-              '"Temperature(F)"': "Temperature(F)",
-              '"Wind_Chill(F)"': "Wind_Chill(F)",
-              '"Humidity(%)"': "Humidity(%)",
-              '"Pressure(in)"': "Pressure(in)",
-              '"Visibility(mi)"': "Visibility(mi)",
-              '"Wind_Speed(mph)"': "Wind_Speed(mph)",
-              '"Precipitation(in)"': "Precipitation(in)"
+# Fix column names with () inside of them
+rename_map = {'"Distance(mi)"': "Distance_mi",
+              '"Temperature(F)"': "Temperature_F",
+              '"Wind_Chill(F)"': "Wind_Chill_F",
+              '"Humidity(%)"': "Humidity",
+              '"Pressure(in)"': "Pressure_in",
+              '"Visibility(mi)"': "Visibility_mi",
+              '"Wind_Speed(mph)"': "Wind_Speed_mph",
+              '"Precipitation(in)"': "Precipitation_in"
               }
 df = df.withColumnsRenamed(rename_map)
 
@@ -185,9 +182,9 @@ top_10_weather.show()
 
 # 3. Average Weather Condition Statistics Per Severity of Accident
 weather_conditions = df.filter(col("Severity").isNotNull()).groupBy("Severity").agg(
-    round(avg("Precipitation(in)"), 2).alias("avg_precipitation(in)"),
-    round(avg("Temperature(F)"), 2).alias("avg_temperature(F)"),
-    round(avg("Visibility(mi)"), 2).alias("avg_visibility(mi)")
+    round(avg("Precipitation_in"), 2).alias("avg_precipitation_in"),
+    round(avg("Temperature_F"), 2).alias("avg_temperature_F"),
+    round(avg("Visibility_mi"), 2).alias("avg_visibility_mi")
 ).orderBy("Severity")
 
 weather_conditions.write \

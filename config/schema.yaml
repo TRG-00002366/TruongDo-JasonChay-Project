@@ -15,11 +15,11 @@ columns:
     max: 4
 
   - name: Start_Time
-    type: string
+    type: timestamp
     nullable: false
 
   - name: End_Time
-    type: string
+    type: timestamp
     nullable: true
 
   - name: Start_Lat
@@ -38,7 +38,7 @@ columns:
     type: double
     nullable: true
 
-  - name: Distance(mi)
+  - name: Distance_mi
     type: double
     nullable: true
     min: 0
@@ -82,30 +82,30 @@ columns:
     nullable: true
   
   - name: Weather_Timestamp
-    type: string
+    type: timestamp
     nullable: true
 
-  - name: Temperature(F)
+  - name: Temperature_F
     type: double
     nullable: true
     min: 0
 
-  - name: Wind_Chill(F)
+  - name: Wind_Chill_F
     type: double
     nullable: true
 
-  - name: Humidity(%)
+  - name: Humidity
     type: double
     nullable: true
     min: 0
     max: 100
   
-  - name: Pressure(in)
+  - name: Pressure_in
     type: double
     nullable: true
     min: 0
   
-  - name: Visibility(mi)
+  - name: Visibility_mi
     type: double
     nullable: true
     min: 0
@@ -114,12 +114,12 @@ columns:
     type: string
     nullable: true
 
-  - name: Wind_Speed(mph)
+  - name: Wind_Speed_mph
     type: double
     nullable: true
     min: 0
 
-  - name: Precipitation(in)
+  - name: Precipitation_in
     type: double
     nullable: true
     min: 0

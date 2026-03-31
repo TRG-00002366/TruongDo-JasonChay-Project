@@ -290,7 +290,7 @@ try:
         )
 
         count += 1
-        time.sleep(1)
+        time.sleep(.1)
 except KeyboardInterrupt:
     pass
 finally:

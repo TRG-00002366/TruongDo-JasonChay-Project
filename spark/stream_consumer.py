@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, BooleanType
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, BooleanType, TimestampType
 from datetime import datetime
 import os
 import shutil
@@ -28,8 +28,8 @@ schema = StructType([
     StructField("ID", StringType(), False),
     StructField("Source", StringType(), True),
     StructField("Severity", IntegerType(), True),
-    StructField("Start_Time", StringType(), True),
-    StructField("End_Time", StringType(), True),
+    StructField("Start_Time", TimestampType(), True),
+    StructField("End_Time", TimestampType(), True),
     StructField("Start_Lat", DoubleType(), True),
     StructField("Start_Lng", DoubleType(), True),
     StructField("End_Lat", DoubleType(), True),
@@ -44,7 +44,7 @@ schema = StructType([
     StructField("Country", StringType(), True),
     StructField("Timezone", StringType(), True),
     StructField("Airport_Code", StringType(), True),
-    StructField("Weather_Timestamp", StringType(), True),
+    StructField("Weather_Timestamp", TimestampType(), True),
     StructField("Temperature(F)", DoubleType(), True),
     StructField("Wind_Chill(F)", DoubleType(), True),
     StructField("Humidity(%)", DoubleType(), True),

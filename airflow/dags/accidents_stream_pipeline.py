@@ -107,6 +107,11 @@ with DAG(
         )
     )
 
+    dbt_deps = BashOperator(
+        task_id="dbt_deps",
+        bash_command="docker exec pipeline-dbt dbt deps"
+    )
+
     run_dbt_transformations = BashOperator(
         task_id="run_dbt_transformations",
         bash_command=(
@@ -117,5 +122,5 @@ with DAG(
     end = EmptyOperator(task_id="end")
 
     # Define dependencies
-    start >> check_kafka_topic_task >> run_streaming_job >> run_df_etl >> run_dbt_transformations >> end
+    start >> check_kafka_topic_task >> run_streaming_job >> run_df_etl >> dbt_deps >> run_dbt_transformations >> end
   
