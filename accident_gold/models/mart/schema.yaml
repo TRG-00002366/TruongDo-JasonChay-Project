@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: accident_stats_by_hour
-    description: "A starter dbt model"
+    description: "Lists the number of accidents and the average accident severity for each hour of the day"
     columns:
       - name: hour_of_day
         description: "The hour of the day from 0-23"
@@ -10,10 +10,54 @@ models:
           - unique
           - not_null
       - name: total_accidents
-        description: "The total number of accident records (per hour)"
+        description: "The total number of accident records"
         data_tests:
           - not_null
       - name: avg_severity
-        description: "The average severity of accidents (per hour)"
+        description: "The average severity of accidents"
         data_tests:
           - not_null
+  - name: accidents_by_weather
+    description: "Lists the number of accidents for each weather condition"
+    columns:
+      - name: weather_condition
+        description: "The weather condition (Clear, Rain, Fog, etc.)"
+        data_tests:
+          - unique
+          - not_null
+      - name: total_accidents
+        description: "The total number of accident records"
+        data_tests:
+          - not_null
+  - name: weather_stats_by_severity
+    description: "Lists average precipitation, average temperature, and average visibility grouped by the severities of accidents"
+    columns:
+      - name: severity
+        description: "The severity of the accident (1-4)"
+        data_tests:
+          - unique
+          - not_null
+      - name: avg_precipitation
+        description: "The average precipitation (in)"
+        data_tests:
+          - not_null
+      - name: avg_temperature
+        description: "The average temperature (F)"
+        data_tests:
+          - not_null
+      - name: avg_visibility
+        description: "The average visibility (mi)"
+        data_tests:
+          - not_null
+  - name: accidents_by_state
+    description: "Lists the accident counts in each state that has had an accident"
+    columns:
+      - name: state   
+        description: "The state code"
+        data_tests:
+          - not_null
+      - name: total_accidents
+        description: "The total number of accident records"
+        data_tests:
+          - not_null
+    
