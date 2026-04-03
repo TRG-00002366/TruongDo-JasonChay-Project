@@ -9,6 +9,10 @@ from pathlib import Path
 # Initialize Spark
 spark = SparkSession.builder \
     .appName("Batch JSON Processor") \
+    .master("local[*]") \
+    .config("spark.cores.max", "8") \
+    .config("spark.executor.memory", "2g") \
+    .config("spark.driver.memory", "2g") \
     .getOrCreate()
 spark.sparkContext.setLogLevel("WARN")
 
@@ -69,8 +73,16 @@ sfOptions = {
 df = spark.read \
     .format("snowflake") \
     .options(**sfOptions) \
-    .option("dbtable", "RAW_ACCIDENTS") \
+    .option("dbtable", "raw_accidents") \
     .load()
+
+# df = df.drop(
+#     '"METADATA$ACTION"',
+#     '"METADATA$ISUPDATE"',
+#     '"METADATA$ROW_ID"'
+# )
+
+print(f"Processing {df.count()} rows")
 
 # Fix column names with () inside of them
 rename_map = {'"Distance(mi)"': "Distance_mi",
@@ -144,66 +156,87 @@ sfOptions["sfSchema"] = "SILVER"
     .format("snowflake")
     .options(**sfOptions)
     .option("dbtable", "cleaned_accidents")
-    .mode("append")
+    .mode("overwrite")
     .save()
 )
 
+# # CONSUME THE STREAM MANUALLY
+
+# conn = snowflake.connector.connect(
+#     user=sfOptions["sfUser"],
+#     password=sfOptions["sfPassword"],
+#     account=sfOptions["sfAccount"],
+#     warehouse=sfOptions["sfWarehouse"],
+#     database=sfOptions["sfDatabase"],
+#     schema=sfOptions["sfSchema"]
+# )
+
+# cursor = conn.cursor()
+
+# # This consumes the stream
+# cursor.execute("""
+#     INSERT INTO stream_consumption_log
+#     SELECT * FROM raw_accidents_stream
+# """)
+
+# cursor.close()
+# conn.close()
 
 
 ##### DataFrame Transformations #####
 
-# output_path = "data"
-output_path = "/opt/spark-data"
+# # output_path = "data"
+# output_path = "/opt/spark-data"
 
-# 1. Accident Information by Hour of Day: Group by hour, calculate cols: 'total_accidents', 'avg_serverity'
-hour_of_day_summary = df.withColumn("hour_of_day", hour(col("Start_Time"))).groupBy("hour_of_day").agg(
-    count("*").alias("total_accidents"),
-    round(avg("Severity"), 2).alias("avg_severity")
-).orderBy("hour_of_day")
+# # 1. Accident Information by Hour of Day: Group by hour, calculate cols: 'total_accidents', 'avg_serverity'
+# hour_of_day_summary = df.withColumn("hour_of_day", hour(col("Start_Time"))).groupBy("hour_of_day").agg(
+#     count("*").alias("total_accidents"),
+#     round(avg("Severity"), 2).alias("avg_severity")
+# ).orderBy("hour_of_day")
 
-hour_of_day_summary.write\
-    .mode("overwrite")\
-    .partitionBy("hour_of_day") \
-    .parquet(f"{output_path}/analysis1")
+# hour_of_day_summary.write\
+#     .mode("overwrite")\
+#     .partitionBy("hour_of_day") \
+#     .parquet(f"{output_path}/analysis1")
 
-hour_of_day_summary.show(24)
+# hour_of_day_summary.show(24)
 
-# 2. Top 10 Weather Conditions: Identify Weather conditions with the highest accident concentrations using Spark SQL window functions
-weather_counts = df.filter(col("Weather_Condition").isNotNull()).groupBy("Weather_Condition").agg(count("*").alias("accident_count"))
-weather_window = Window.orderBy(desc("accident_count"))
-top_10_weather = weather_counts.withColumn("rank", row_number().over(weather_window)).filter(col("rank") <= 10)
+# # 2. Top 10 Weather Conditions: Identify Weather conditions with the highest accident concentrations using Spark SQL window functions
+# weather_counts = df.filter(col("Weather_Condition").isNotNull()).groupBy("Weather_Condition").agg(count("*").alias("accident_count"))
+# weather_window = Window.orderBy(desc("accident_count"))
+# top_10_weather = weather_counts.withColumn("rank", row_number().over(weather_window)).filter(col("rank") <= 10)
 
-top_10_weather.write \
-    .mode("overwrite") \
-    .partitionBy("Weather_Condition") \
-    .parquet(f"{output_path}/analysis2")
+# top_10_weather.write \
+#     .mode("overwrite") \
+#     .partitionBy("Weather_Condition") \
+#     .parquet(f"{output_path}/analysis2")
 
-top_10_weather.show()
+# top_10_weather.show()
 
-# 3. Average Weather Condition Statistics Per Severity of Accident
-weather_conditions = df.filter(col("Severity").isNotNull()).groupBy("Severity").agg(
-    round(avg("Precipitation_in"), 2).alias("avg_precipitation_in"),
-    round(avg("Temperature_F"), 2).alias("avg_temperature_F"),
-    round(avg("Visibility_mi"), 2).alias("avg_visibility_mi")
-).orderBy("Severity")
+# # 3. Average Weather Condition Statistics Per Severity of Accident
+# weather_conditions = df.filter(col("Severity").isNotNull()).groupBy("Severity").agg(
+#     round(avg("Precipitation_in"), 2).alias("avg_precipitation_in"),
+#     round(avg("Temperature_F"), 2).alias("avg_temperature_F"),
+#     round(avg("Visibility_mi"), 2).alias("avg_visibility_mi")
+# ).orderBy("Severity")
 
-weather_conditions.write \
-    .mode("overwrite") \
-    .partitionBy("Severity") \
-    .parquet(f"{output_path}/analysis3")
+# weather_conditions.write \
+#     .mode("overwrite") \
+#     .partitionBy("Severity") \
+#     .parquet(f"{output_path}/analysis3")
 
-weather_conditions.show()
+# weather_conditions.show()
 
-# 4. Accident Count by State
-state_accidents = df.filter(col("State").isNotNull()).groupBy("State").agg(count("*").alias("accident_count"))
-state_window = Window.orderBy(desc("accident_count"))
-top_10_states = state_accidents.withColumn("rank", row_number().over(state_window))
+# # 4. Accident Count by State
+# state_accidents = df.filter(col("State").isNotNull()).groupBy("State").agg(count("*").alias("accident_count"))
+# state_window = Window.orderBy(desc("accident_count"))
+# top_10_states = state_accidents.withColumn("rank", row_number().over(state_window))
 
-top_10_states.write \
-    .mode("overwrite") \
-    .partitionBy("State") \
-    .parquet(f"{output_path}/analysis4")
+# top_10_states.write \
+#     .mode("overwrite") \
+#     .partitionBy("State") \
+#     .parquet(f"{output_path}/analysis4")
 
-top_10_states.show()
+# top_10_states.show()
 
 spark.stop()

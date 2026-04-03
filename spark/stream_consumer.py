@@ -120,5 +120,5 @@ query = parsed_rows.writeStream \
     .start()
 
 print("================================ WROTE TO RAW DATA ================================")
-query.awaitTermination(30)
+query.awaitTermination(60)
 spark.stop()

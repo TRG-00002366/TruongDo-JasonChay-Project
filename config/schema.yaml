@@ -88,7 +88,6 @@ columns:
   - name: Temperature_F
     type: double
     nullable: true
-    min: 0
 
   - name: Wind_Chill_F
     type: double

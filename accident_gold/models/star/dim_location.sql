@@ -1,4 +1,4 @@
-{{ config(materialized='table') }}
+{{ config(materialized='table', transient=false) }}
 
 SELECT DISTINCT
     {{ dbt_utils.generate_surrogate_key([

@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: fct_accidents
+    description: "Central fact table"
+    columns:
+      - name: id
+        description: "Primary key"
+        data_tests:
+          - unique
+          - not_null
+      - name: location_id
+        description: "Foreign key to location dimension table"
+        data_tests:
+          - unique
+          - not_null
+      - name: time_id
+        description: "Foreign key to time dimension table"
+        data_tests:
+          - unique
+          - not_null
+      - name: weather_id
+        description: "Foreign key to weather dimension table"
+        data_tests:
+          - unique
+          - not_null
+  - name: dim_location
+    description: "Dimension table for location information"
+    columns:
+      - name: location_id
+        description: "Surrogate primary key"
+        data_tests:
+          - unique
+          - not_null
+  - name: dim_time
+    description: "Dimension table for time"
+    columns:
+      - name: time_id
+        description: "Surrogate primary key"
+        data_tests:
+          - unique
+          - not_null
+  - name: dim_weather
+    description: "Dimension table for weather information"
+    columns:
+      - name: weather_id
+        description: "Surrogate primary key"
+        data_tests:
+          - unique
+          - not_null
+          
+          
